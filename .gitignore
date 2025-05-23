@@ -1,0 +1,10 @@
+.vs/
+src/MiniRTIC/bin/
+src/MiniRTIC/obj/
+src/MiniRTICallServer/bin/
+src/MiniRTICallServer/obj/
+src/LibRTIC_Win/bin/
+src/LibRTIC_Win/obj/
+src/LibRTIC/bin/
+src/LibRTIC/obj/
+launchSettings.json
