@@ -8,9 +8,7 @@
     <RootNamespace>MiniRTICallServer</RootNamespace>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DefineConstants>$(DefineConstants);DEBUG_DISPOSE;DEBUG_UNDISPOSED;DEBUG_FINALIZER;DEBUG_VERBOSE;DEBUG_VERBOSE_DISPOSE</DefineConstants>
-  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'" />
 
   <ItemGroup>
     <PackageReference Include="Serilog" Version="4.2.1-dev-02352" />
