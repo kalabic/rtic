@@ -281,6 +281,17 @@ namespace MiniRTICallServer
                         Log.LogInformation("Quitting");
                         break;
                     }
+#if DEBUG_UNDISPOSED
+                    else if (keyProps.KeyChar == 'g')
+                    {
+                        Log.LogWarning("Running GC.Collect");
+                        GC.Collect();
+                    }
+                    else if (keyProps.KeyChar == 'x')
+                    {
+                        PrintDebugInfo();
+                    }
+#endif
                 }
             }
             catch (Exception excp)
@@ -288,6 +299,20 @@ namespace MiniRTICallServer
                 Log.LogError($"Exception OnKeyPress. {excp.Message}.");
             }
         }
+
+#if DEBUG_UNDISPOSED
+        private static void PrintDebugInfo()
+        {
+            Log.LogDebug($" >>> TaskWithEvents.UNDISPOSED_COUNT: {TaskWithEvents.UNDISPOSED_COUNT}");
+            Log.LogDebug($" >>> TaskWithEvents.INSTANCE_COUNT: {TaskWithEvents.INSTANCE_COUNT}");
+            Log.LogDebug($" >>> EventForwarder.UNDISPOSED_COUNT: {EventForwarderBase.UNDISPOSED_COUNT}");
+            Log.LogDebug($" >>> EventForwarder.INSTANCE_COUNT: {EventForwarderBase.INSTANCE_COUNT}");
+            Log.LogDebug($" >>> EventCollection.UNDISPOSED_COUNT: {EventCollection.UNDISPOSED_COUNT}");
+            Log.LogDebug($" >>> EventCollection.INSTANCE_COUNT: {EventCollection.INSTANCE_COUNT}");
+            Log.LogDebug($" >>> EventConnection.UNDISPOSED_COUNT: {EventConnectionInstance.UNDISPOSED_COUNT}");
+            Log.LogDebug($" >>> EventConnection.INSTANCE_COUNT: {EventConnectionInstance.INSTANCE_COUNT}");
+        }
+#endif
 
         /// <summary>
         /// Example of how to create a basic RTP session object and hook up the event handlers.

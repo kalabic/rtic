@@ -42,6 +42,13 @@ public class ConversationUpdatesReceiver : ConversationUpdatesDispatcher
         _forwardedEvents.EnableInvokeFor<FailedToConnect>();
     }
 
+#if DEBUG_FINALIZER
+    ~ConversationUpdatesReceiver()
+    {
+        _info.Info("~ConversationUpdatesReceiver()");
+    }
+#endif
+
     override protected void Dispose(bool disposing)
     {
         // Release managed resources.

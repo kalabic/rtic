@@ -24,6 +24,9 @@ public class RTICallState_WritingItem : RTICallStateBase
                 return stateCollection.State_WaitingItem;
 
             default:
+#if DEBUG
+                Log?.LogInformation("State_WritingItem: ignoring message: " + messageType.ToString());
+#endif
                 break;
         }
 

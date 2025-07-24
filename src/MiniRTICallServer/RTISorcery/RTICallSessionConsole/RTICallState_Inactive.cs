@@ -25,12 +25,19 @@ public class RTICallState_Inactive : RTICallStateBase
                 return stateCollection.State_Connecting;
 
             case RTISessionEventId.SessionStarted:
+#if DEBUG
+                throw new ArgumentException("State_Inactive: 'SessionStarted' received before 'ConnectingStarted'.");
+#else
                 return stateCollection.State_WaitingItem;
+#endif
 
             case RTISessionEventId.SessionFinished:
                 break;
 
             default:
+#if DEBUG
+                Log?.LogDebug("State_Inactive: ignoring message: " + messageType.ToString());
+#endif
                 break;
         }
 

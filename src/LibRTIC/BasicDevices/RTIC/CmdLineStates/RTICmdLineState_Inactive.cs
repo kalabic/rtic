@@ -21,12 +21,19 @@ public class RTICmdLineState_Inactive : RTIConsoleStateBase
                 return stateCollection.State_Connecting;
 
             case RTISessionEventId.SessionStarted:
+#if DEBUG
+                throw new ArgumentException("State_Inactive: 'SessionStarted' received before 'ConnectingStarted'.");
+#else
                 return stateCollection.State_WaitingItem;
+#endif
 
             case RTISessionEventId.SessionFinished:
                 break;
 
             default:
+#if DEBUG
+                COWriteLine("State_Inactive: ignoring message: " + messageType.ToString());
+#endif
                 break;
         }
 
@@ -35,6 +42,9 @@ public class RTICmdLineState_Inactive : RTIConsoleStateBase
 
     public override void Write(RTMessageType type, string message)
     {
+#if DEBUG
+        throw new ArgumentException("State_Inactive: Unexpected message type " + type.ToString());
+#endif
     }
 
     public override void WriteLine(RTMessageType type, string? message)
@@ -43,5 +53,11 @@ public class RTICmdLineState_Inactive : RTIConsoleStateBase
         {
             COWriteLine(message);
         }
+#if DEBUG
+        else
+        {
+            throw new ArgumentException("State_Inactive: Unexpected message type " + type.ToString());
+        }
+#endif
     }
 }

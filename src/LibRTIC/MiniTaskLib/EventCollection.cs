@@ -11,6 +11,14 @@ namespace LibRTIC.MiniTaskLib;
 /// </summary>
 public class EventCollection : IDisposable
 {
+#if DEBUG_UNDISPOSED
+    public static int UNDISPOSED_COUNT = 0;
+
+    public static int INSTANCE_COUNT = 0;
+
+    private bool _disposed = false;
+#endif
+
     public string Label = "";
 
     public bool IsComplete { get { return _complete; } }
@@ -29,7 +37,19 @@ public class EventCollection : IDisposable
     {
         this._info = info;
         this.Label = label;
+#if DEBUG_UNDISPOSED
+        Interlocked.Increment(ref UNDISPOSED_COUNT);
+        Interlocked.Increment(ref INSTANCE_COUNT);
+#endif
     }
+
+#if DEBUG_UNDISPOSED
+    ~EventCollection()
+    {
+        Dispose(false);
+        Interlocked.Decrement(ref INSTANCE_COUNT);
+    }
+#endif
 
     public void Dispose()
     {
@@ -38,6 +58,18 @@ public class EventCollection : IDisposable
 
     protected virtual void Dispose(bool disposing)
     {
+#if DEBUG_UNDISPOSED
+        if (!_disposed && !disposing)
+        {
+            throw new InvalidOperationException("Not disposed properly.");
+        }
+        if (!_disposed)
+        {
+            _disposed = true;
+            Interlocked.Decrement(ref UNDISPOSED_COUNT);
+        }
+#endif
+
         // Release managed resources.
         if (disposing)
         {
@@ -71,7 +103,11 @@ public class EventCollection : IDisposable
         {
             if (_complete)
             {
+#if DEBUG
+                throw new ArgumentException("Access forbidden into completed EventCollection.");
+#else
                 return null;
+#endif
             }
 
             var items = _collection.OfType<EventContainer<TMessage>>();
@@ -119,7 +155,11 @@ public class EventCollection : IDisposable
         {
             if (_complete)
             {
+#if DEBUG
+                throw new ArgumentException("Access forbidden into completed EventCollection.");
+#else
                 return false;
+#endif
             }
 
             var items = _collection.OfType<EventContainer<TMessage>>();
@@ -145,7 +185,11 @@ public class EventCollection : IDisposable
         {
             if (_complete)
             {
+#if DEBUG
+                throw new ArgumentException("Access forbidden into completed EventCollection.");
+#else
                 return null;
+#endif
             }
 
             var items = _collection.OfType<EventContainer<TMessage>>();
@@ -157,7 +201,12 @@ public class EventCollection : IDisposable
             {
                 return items.First();
             }
+
+#if DEBUG
+            throw new ArgumentException("Attempted to access non-existent event type in EventSourceCollection.");
+#else
             return null;
+#endif
         }
     }
 
@@ -219,7 +268,11 @@ public class EventCollection : IDisposable
         {
             if (_complete)
             {
+#if DEBUG
+                throw new ArgumentException("Access forbidden into completed EventCollection.");
+#else
                 return;
+#endif
             }
 
             var items = _collection.OfType<EventContainer<TMessage>>();
@@ -263,7 +316,11 @@ public class EventCollection : IDisposable
         {
             if (_complete)
             {
+#if DEBUG
+                throw new ArgumentException("Access forbidden into completed EventCollection.");
+#else
                 return;
+#endif
             }
 
             var items = _collection.OfType<EventContainer<TMessage>>();
@@ -299,7 +356,11 @@ public class EventCollection : IDisposable
         {
             if (_complete)
             {
+#if DEBUG
+                throw new ArgumentException("Access forbidden into completed EventCollection.");
+#else
                 return null;
+#endif
             }
 
             var items = _collection.OfType<EventContainer<TMessage>>();

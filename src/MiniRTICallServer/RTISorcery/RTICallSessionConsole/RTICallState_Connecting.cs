@@ -27,6 +27,9 @@ public class RTICallState_Connecting : RTICallStateBase
                 return stateCollection.State_Answering;
 
             default:
+#if DEBUG
+                Log?.LogDebug("State_Connecting: ignoring message: " + messageType.ToString());
+#endif
                 break;
         }
 

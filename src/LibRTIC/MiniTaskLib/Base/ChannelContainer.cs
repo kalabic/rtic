@@ -29,6 +29,13 @@ public class ChannelContainer<TMessage> : DisposableBase, IQueueWriter<TMessage>
         if (disposing)
         {
             TryCompleteWriter();
+            // Not great, not terrible. Leave it for debug.
+            if (_channel.Reader.Count > 0)
+            {
+#if DEBUG_DISPOSE
+                throw new InvalidOperationException("Channel not closed properly.");
+#endif
+            }
         }
         // Release unmanaged resources.
         base.Dispose(disposing);

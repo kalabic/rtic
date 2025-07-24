@@ -52,6 +52,9 @@ public class CircularBufferStream : ExStream
                 }
                 _streamEvent.Dispose();
             }
+#if DEBUG_VERBOSE_DISPOSE
+            _info.ObjectDisposed(this);
+#endif
         }
 
         // Release unmanaged resources.

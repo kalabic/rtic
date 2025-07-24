@@ -37,6 +37,9 @@ public class RTICmdLineState_WaitingItem : RTIConsoleStateWithTimer
                 return stateCollection.State_Inactive;
 
             default:
+#if DEBUG
+                COWriteLine("State_WaitingItem: ignoring message: " + messageType.ToString());
+#endif
                 break;
         }
 
@@ -59,5 +62,12 @@ public class RTICmdLineState_WaitingItem : RTIConsoleStateWithTimer
         {
             _userTranscript += message;
         }
+#if DEBUG
+        else
+        {
+            // TODO: Agent message received before item started!
+            throw new NotImplementedException();
+        }
+#endif
     }
 }

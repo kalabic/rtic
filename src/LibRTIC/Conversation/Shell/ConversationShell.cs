@@ -55,6 +55,13 @@ public abstract class ConversationShell : IDisposable
         ConnectConversationUpdateHandlers();
     }
 
+#if DEBUG_FINALIZER
+    ~ConversationShell()
+    {
+        _info.Info("~ConversationShell()");
+    }
+#endif
+
     virtual public void Dispose()
     {
         _streamItemMap.Clear();
@@ -145,6 +152,12 @@ public abstract class ConversationShell : IDisposable
                 _devices.EnqueueForPlayback(item.Attrib, update.Audio);
             }
         }
+#if DEBUG
+        else
+        {
+            throw new InvalidOperationException("Not nice");
+        }
+#endif
     }
 
     /// <summary>

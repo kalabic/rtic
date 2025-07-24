@@ -4,7 +4,14 @@ public abstract class DisposableBase : IDisposable
 {
     public bool IsDisposed { get { return _disposed; } protected set { _disposed = value; } }
 
+#if DEBUG_UNDISPOSED
     private bool _disposed = false;
+
+    ~DisposableBase()
+    {
+        Dispose(false);
+    }
+#endif
 
     public void Dispose()
     {
@@ -13,10 +20,16 @@ public abstract class DisposableBase : IDisposable
 
     protected virtual void Dispose(bool disposing)
     {
+#if DEBUG_UNDISPOSED
+        if (!_disposed && !disposing)
+        {
+            throw new InvalidOperationException("Not disposed properly.");
+        }
         if (!_disposed)
         {
             _disposed = true;
         }
+#endif
         // Release managed resources: disposing = true
         // Release unmanaged resources: disposing = false
     }

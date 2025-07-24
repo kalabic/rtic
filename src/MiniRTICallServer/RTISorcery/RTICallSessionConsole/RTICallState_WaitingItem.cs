@@ -28,6 +28,9 @@ public class RTICallState_WaitingItem : RTICallStateBase
                 return stateCollection.State_Inactive;
 
             default:
+#if DEBUG
+                Log?.LogDebug("State_WaitingItem: ignoring message: " + messageType.ToString());
+#endif
                 break;
         }
 

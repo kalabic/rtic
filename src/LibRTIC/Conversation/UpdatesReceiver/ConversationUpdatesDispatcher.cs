@@ -25,6 +25,10 @@ public abstract class ConversationUpdatesDispatcher : ForwardedEventQueue
         : base(info)
     {
         _converter = new(_events, _forwardedEvents);
+#if DEBUG
+        SetLabel("Updates Dispatcher");
+#endif
+
         // Local session notifications
         ForwardEventTo< ConversationSessionFinished >(_forwardedEvents);
     }

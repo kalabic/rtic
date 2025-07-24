@@ -46,6 +46,9 @@ public class RTICmdLineState_Answering : RTIConsoleStateWithTimer
                 return stateCollection.State_WritingItem;
 
             default:
+#if DEBUG
+                COWriteLine("RTICallState_Answering: ignoring message: " + messageType.ToString());
+#endif
                 break;
         }
 
@@ -64,5 +67,11 @@ public class RTICmdLineState_Answering : RTIConsoleStateWithTimer
             COWrite("\r     \r");
             COWriteLine(message);
         }
+#if DEBUG
+        else
+        {
+            throw new NotImplementedException();
+        }
+#endif
     }
 }

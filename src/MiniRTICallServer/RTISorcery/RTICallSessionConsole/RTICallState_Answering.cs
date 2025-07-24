@@ -25,6 +25,9 @@ public class RTICallState_Answering : RTICallStateBase
                 return stateCollection.State_WritingItem;
 
             default:
+#if DEBUG
+                Log?.LogDebug("RTICallState_Answering: ignoring message: " + messageType.ToString());
+#endif
                 break;
         }
 

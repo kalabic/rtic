@@ -68,6 +68,13 @@ public abstract class MessageQueueFunction<TMessage> : DisposableBase, IQueueWri
                 ProcessMessage(message);
             }
         }
+
+#if DEBUG
+        if (_channel.Count > 0)
+        {
+            throw new InvalidOperationException("Channel not closed properly.");
+        }
+#endif
     }
 
     public TaskWithEvents RunAsync(TMessage initialMessage)
@@ -98,6 +105,13 @@ public abstract class MessageQueueFunction<TMessage> : DisposableBase, IQueueWri
                 ProcessMessage(message);
             }
         }
+
+#if DEBUG
+        if (_channel.Count > 0)
+        {
+            throw new InvalidOperationException("Channel not closed properly.");
+        }
+#endif
     }
 
     abstract protected void ProcessMessage(TMessage message);

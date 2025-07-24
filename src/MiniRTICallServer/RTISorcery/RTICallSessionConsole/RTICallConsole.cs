@@ -152,7 +152,11 @@ public class RTICallConsole
 
     public void ItemStarted(string? message = null)
     {
+#if DEBUG_VERBOSE
+        ProcessSessionEvent(RTISessionEventId.ItemStarted, message);
+#else
         ProcessSessionEvent(RTISessionEventId.ItemStarted, null);
+#endif
     }
 
     public void ItemFinished(string? message = null)

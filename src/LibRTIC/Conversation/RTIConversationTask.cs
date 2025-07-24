@@ -228,6 +228,9 @@ public class RTIConversationTask : RTIConversation
 
             _networkConnectionTask = new ActionTask(_info, NetworkConnectionEntry );
             _networkConnectionTask.TaskEvents.Connect<TaskExceptionOccured>( HandleEvent );
+#if DEBUG
+            _networkConnectionTask.SetLabel("Network Connection");
+#endif
             _networkConnectionTask.Start();
         }
         else
@@ -361,6 +364,9 @@ public class RTIConversationTask : RTIConversation
         // A task that reads input audio from intermediate buffer and sends it to the server.
         //
         _sendAudioTask = new ActionTask(_info, SendAudioInputTask );
+#if DEBUG
+        _sendAudioTask.SetLabel("Send Audio");
+#endif
         _sendAudioTask.TaskEvents.ConnectAsync<TaskCompleted>(AudioInputFinished);
         _sendAudioTask.Start();
 
@@ -517,6 +523,18 @@ public class RTIConversationTask : RTIConversation
     private void InternalCancelStopDisposeAll()
     {
         var taskList = GetTaskList();
+#if !DEBUG
         TaskTool.CancelAndWaitAll(taskList, STOP_TASK_TIMEOUT);
+#else
+        long finishMs = TaskTool.CancelAndWaitAll(taskList, STOP_TASK_TIMEOUT);
+        if (finishMs > 0)
+        {
+            _info.Info($"It took {finishMs} ms to close session.");
+        }
+        else if (finishMs < 0)
+        {
+            _info.Error("Failed to finish session. Some conversation receiver tasks still running.");
+        }
+#endif
     }
 }

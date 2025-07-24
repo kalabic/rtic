@@ -274,6 +274,9 @@ public class RTICAudioEndPoint : IAudioSource, IAudioSink, IDisposable
                             if (resultArray is not null)
                             {
                                 resultArray = Combine(resultArray, array);
+#if DEBUG
+                                _logger.LogDebug("(RTICAudioEndPoint) Running 'Audio Response Timer' loop more than once.");
+#endif
                             }
                             else
                             {
@@ -302,6 +305,12 @@ public class RTICAudioEndPoint : IAudioSource, IAudioSink, IDisposable
             if (!_isAudioSourcePaused && resultArray is not null)
             {
                 this.OnAudioSourceEncodedSample?.Invoke((uint)resultArray.Length, resultArray);
+#if DEBUG
+                if ((float)totalBytesRead < ((float)_responseAudioLength * 0.75f))
+                {
+                    _logger.LogDebug("(RTICAudioEndPoint) Sent an incomplete chunk of audio.");
+                }
+#endif
             }
         }
     }
