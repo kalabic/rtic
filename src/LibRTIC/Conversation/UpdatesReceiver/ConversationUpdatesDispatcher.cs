@@ -1,6 +1,6 @@
-﻿using OpenAI.RealtimeConversation;
-using LibRTIC.MiniTaskLib.MessageQueue;
+﻿using LibRTIC.MiniTaskLib.MessageQueue;
 using LibRTIC.MiniTaskLib.Model;
+using OpenAI.Realtime;
 using System.Net.WebSockets;
 
 namespace LibRTIC.Conversation.UpdatesReceiver;
@@ -77,99 +77,99 @@ public abstract class ConversationUpdatesDispatcher : ForwardedEventQueue
         }
     }
 
-    protected void DispatchUpdate(ConversationUpdate update)
+    protected void DispatchUpdate(RealtimeUpdate update)
     {
-        if (update is ConversationErrorUpdate errorUpdate)
+        if (update is RealtimeErrorUpdate errorUpdate)
         {
             _converter._actionError.ProcessNew();
         }
-        else if (update is ConversationInputAudioClearedUpdate audioClearedUpdate)
+        else if (update is InputAudioClearedUpdate audioClearedUpdate)
         {
             _sessionState.nInputAudioCleared++;
             _sessionState.SpeechStarted = false;
             _sessionState.WaitingTranscription = false;
             _converter._actionInputAudioCleared.ProcessNew();
         }
-        else if (update is ConversationInputAudioCommittedUpdate audioCommitedUpdate)
+        else if (update is InputAudioCommittedUpdate audioCommitedUpdate)
         {
             _converter._actionInputAudioCommitted.ProcessNew();
         }
-        else if (update is ConversationInputSpeechStartedUpdate speechStartedUpdate)
+        else if (update is InputAudioSpeechStartedUpdate speechStartedUpdate)
         {
             _sessionState.SpeechStarted = true;
             _converter._actionInputSpeechStarted.ProcessNew();
         }
-        else if (update is ConversationInputSpeechFinishedUpdate speechFinishedUpdate)
+        else if (update is InputAudioSpeechFinishedUpdate speechFinishedUpdate)
         {
             _sessionState.SpeechStarted = false;
             _sessionState.WaitingTranscription = true;
             _converter._actionInputSpeechFinished.ProcessNew();
         }
-        else if (update is ConversationInputTranscriptionFailedUpdate transcriptionFailedUpdate)
+        else if (update is InputAudioTranscriptionFailedUpdate transcriptionFailedUpdate)
         {
             _sessionState.nTranscriptionFailed++;
             _sessionState.WaitingTranscription = false;
             _converter._actionInputTranscriptionFailed.Convert(transcriptionFailedUpdate);
         }
-        else if (update is ConversationInputTranscriptionFinishedUpdate transcriptionFinishedUpdate)
+        else if (update is InputAudioTranscriptionFinishedUpdate transcriptionFinishedUpdate)
         {
             _sessionState.nTranscriptionFinished++;
             _sessionState.WaitingTranscription = false;
             _converter._actionInputTranscriptionFinished.Convert(transcriptionFinishedUpdate);
         }
-        else if (update is ConversationItemCreatedUpdate itemCreatedUpdate)
+        else if (update is ItemCreatedUpdate itemCreatedUpdate)
         {
             _converter._actionItemCreated.ProcessNew();
         }
-        else if (update is ConversationItemDeletedUpdate itemDeletedUpdate)
+        else if (update is ItemDeletedUpdate itemDeletedUpdate)
         {
             _converter._actionItemDeleted.ProcessNew();
         }
-        else if (update is ConversationItemStreamingAudioFinishedUpdate audioFinishedUpdate)
+        else if (update is OutputAudioFinishedUpdate audioFinishedUpdate)
         {
             _converter._actionItemStreamingAudioFinished.ProcessNew();
         }
-        else if (update is ConversationItemStreamingAudioTranscriptionFinishedUpdate audioTranscriptionFinishedUpdate)
+        else if (update is OutputAudioTranscriptionFinishedUpdate audioTranscriptionFinishedUpdate)
         {
             _converter._actionItemStreamingAudioTranscriptionFinished.ProcessNew();
         }
-        else if (update is ConversationItemStreamingFinishedUpdate streamingFinishedUpdate)
+        else if (update is OutputStreamingFinishedUpdate streamingFinishedUpdate)
         {
             _sessionState.StreamingStarted = false;
             _converter._actionItemStreamingFinished.Convert(streamingFinishedUpdate);
         }
-        else if (update is ConversationItemStreamingPartDeltaUpdate deltaUpdate)
+        else if (update is OutputDeltaUpdate deltaUpdate)
         {
             _converter._actionItemStreamingPartDelta.Convert(deltaUpdate);
         }
-        else if (update is ConversationItemStreamingPartFinishedUpdate partFinishedUpdate)
+        else if (update is OutputPartFinishedUpdate partFinishedUpdate)
         {
             _converter._actionItemStreamingPartFinished.ProcessNew();
         }
-        else if (update is ConversationItemStreamingStartedUpdate streamingStartedUpdate)
+        else if (update is OutputStreamingStartedUpdate streamingStartedUpdate)
         {
             _sessionState.StreamingStarted = true;
             _converter._actionItemStreamingStarted.Convert(streamingStartedUpdate);
         }
-        else if (update is ConversationItemStreamingTextFinishedUpdate textFinishedUpdate)
+        else if (update is OutputTextFinishedUpdate textFinishedUpdate)
         {
             _converter._actionItemStreamingTextFinished.ProcessNew();
         }
-        else if (update is ConversationItemTruncatedUpdate truncatedUpdate)
+        else if (update is ItemTruncatedUpdate truncatedUpdate)
         {
             _converter._actionItemTruncated.ProcessNew();
         }
-        else if (update is ConversationRateLimitsUpdate rateLimitsUpdate)
+        else if (update is RateLimitsUpdate rateLimitsUpdate)
         {
             _converter._actionRateLimits.ProcessNew();
         }
-        else if (update is ConversationResponseFinishedUpdate responseFinishedUpdate)
+        else if (update is ResponseFinishedUpdate responseFinishedUpdate)
         {
             _sessionState.nResponseFinished++;
             _sessionState.ResponseStarted = false;
             _converter._actionResponseFinished.ProcessNew();
         }
-        else if (update is ConversationResponseStartedUpdate responseStartedUpdate)
+        else if (update is ResponseStartedUpdate responseStartedUpdate)
         {
             _sessionState.nResponseStarted++;
             _sessionState.ResponseStarted = true;

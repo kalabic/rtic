@@ -1,4 +1,4 @@
-﻿using OpenAI.RealtimeConversation;
+﻿using OpenAI.Realtime;
 using LibRTIC.BasicDevices;
 
 namespace LibRTIC.Config;
@@ -32,7 +32,7 @@ public class ConversationSessionConfig
                 Model = "whisper-1",
             },
             TurnDetectionOptions =
-                ConversationTurnDetectionOptions.CreateServerVoiceActivityTurnDetectionOptions(
+                TurnDetectionOptions.CreateServerVoiceActivityTurnDetectionOptions(
                                     DEFAULT_SERVERVAD_THRESHOLD,
                                     TimeSpan.FromMilliseconds(DEFAULT_SERVERVAD_PREFIXPADDINGMS),
                                     TimeSpan.FromMilliseconds(DEFAULT_SERVERVAD_SILENCEDURATIONMS)),

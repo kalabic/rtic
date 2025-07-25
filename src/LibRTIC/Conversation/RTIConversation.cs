@@ -1,4 +1,4 @@
-﻿using OpenAI.RealtimeConversation;
+﻿using OpenAI.Realtime;
 using LibRTIC.BasicDevices;
 using LibRTIC.Config;
 using LibRTIC.MiniTaskLib;
@@ -31,7 +31,7 @@ public abstract class RTIConversation : TaskListBase
     /// </summary>
     public abstract EventQueue ConversationEvents { get; }
 
-    public abstract void ConfigureWith(RealtimeConversationClient client, ExStream audioInputStream);
+    public abstract void ConfigureWith(RealtimeClient client, ExStream audioInputStream);
 
     public abstract void ConfigureWith(ConversationOptions options, ExStream audioInputStream);
 
