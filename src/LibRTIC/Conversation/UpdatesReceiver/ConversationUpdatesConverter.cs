@@ -1,4 +1,4 @@
-﻿using OpenAI.RealtimeConversation;
+﻿using OpenAI.Realtime;
 using LibRTIC.MiniTaskLib;
 
 namespace LibRTIC.Conversation.UpdatesReceiver;
@@ -12,43 +12,43 @@ public class ConversationUpdatesConverter
                              _actionSessionStarted;
 
     public ReplaceAndForward<ConversationInputAudioCleared, 
-                             ConversationInputAudioClearedUpdate> 
+                             InputAudioClearedUpdate> 
                              _actionInputAudioCleared;
 
     public ReplaceAndForward<ConversationInputAudioCommitted, 
-                             ConversationInputAudioCommittedUpdate> 
+                             InputAudioCommittedUpdate> 
                              _actionInputAudioCommitted;
 
     public ReplaceAndForward<ConversationItemCreated, 
-                             ConversationItemCreatedUpdate> 
+                             ItemCreatedUpdate> 
                              _actionItemCreated;
 
     public ReplaceAndForward<ConversationItemDeleted, 
-                             ConversationItemDeletedUpdate> 
+                             ItemDeletedUpdate> 
                              _actionItemDeleted;
 
     public ReplaceAndForward<ConversationError, 
-                             ConversationErrorUpdate> 
+                             RealtimeErrorUpdate> 
                              _actionError;
 
     public ReplaceAndForward<ConversationInputSpeechStarted, 
-                             ConversationInputSpeechStartedUpdate> 
+                             InputAudioSpeechStartedUpdate> 
                              _actionInputSpeechStarted;
 
     public ReplaceAndForward<ConversationInputSpeechFinished, 
-                             ConversationInputSpeechFinishedUpdate> 
+                             InputAudioSpeechFinishedUpdate> 
                              _actionInputSpeechFinished;
 
-    public ReplaceAndForward<ConversationItemStreamingAudioFinished, 
-                             ConversationItemStreamingAudioFinishedUpdate> 
+    public ReplaceAndForward<ConversationItemStreamingAudioFinished,
+                             OutputAudioFinishedUpdate>
                              _actionItemStreamingAudioFinished;
 
     public ConvertAndForward<ConversationInputTranscriptionFailed, 
-                             ConversationInputTranscriptionFailedUpdate> 
+                             InputAudioTranscriptionFailedUpdate> 
                              _actionInputTranscriptionFailed;
 
     public ConvertAndForward<ConversationInputTranscriptionFinished, 
-                             ConversationInputTranscriptionFinishedUpdate> 
+                             InputAudioTranscriptionFinishedUpdate> 
                              _actionInputTranscriptionFinished;
 
     public ReplaceAndForward<ConversationItemStreamingAudioTranscriptionFinished, 
@@ -56,23 +56,23 @@ public class ConversationUpdatesConverter
                              _actionItemStreamingAudioTranscriptionFinished;
 
     public ConvertAndForward<ConversationItemStreamingFinished, 
-                             ConversationItemStreamingFinishedUpdate> 
+                             OutputStreamingFinishedUpdate> 
                              _actionItemStreamingFinished;
 
-    public ConvertAndForward<ConversationItemStreamingPartDelta, 
-                             ConversationItemStreamingPartDeltaUpdate> 
+    public ConvertAndForward<ConversationItemStreamingPartDelta,
+                             OutputDeltaUpdate>
                              _actionItemStreamingPartDelta;
 
-    public ReplaceAndForward<ConversationItemStreamingPartFinished, 
-                             ConversationItemStreamingPartFinishedUpdate> 
+    public ReplaceAndForward<ConversationItemStreamingPartFinished,
+                             OutputPartFinishedUpdate>
                              _actionItemStreamingPartFinished;
 
     public ConvertAndForward<ConversationItemStreamingStarted, 
-                             ConversationItemStreamingStartedUpdate> 
+                             OutputStreamingStartedUpdate> 
                              _actionItemStreamingStarted;
 
-    public ReplaceAndForward<ConversationItemStreamingTextFinished, 
-                             ConversationItemStreamingTextFinishedUpdate> 
+    public ReplaceAndForward<ConversationItemStreamingTextFinished,
+                             OutputTextFinishedUpdate>
                              _actionItemStreamingTextFinished;
 
     public ReplaceAndForward<ConversationRateLimits, 
@@ -80,11 +80,11 @@ public class ConversationUpdatesConverter
                              _actionRateLimits;
 
     public ReplaceAndForward<ConversationResponseFinished, 
-                             ConversationResponseFinishedUpdate> 
+                             ResponseFinishedUpdate> 
                              _actionResponseFinished;
 
     public ReplaceAndForward<ConversationResponseStarted, 
-                             ConversationResponseStartedUpdate> 
+                             ResponseStartedUpdate> 
                              _actionResponseStarted;
 
     public ReplaceAndForward<ConversationSessionConfigured, 
@@ -92,7 +92,7 @@ public class ConversationUpdatesConverter
                              _actionSessionConfigured;
 
     public ReplaceAndForward<ConversationItemTruncated, 
-                             ConversationItemTruncatedUpdate> 
+                             ItemTruncatedUpdate> 
                              _actionItemTruncated;
 
     public ConversationUpdatesConverter(EventCollection eventCollection, EventQueue eventQueue)
@@ -127,7 +127,7 @@ public class ConversationUpdatesConverter
     }
 
 
-    private class ConversationInputTranscriptionFailedConverter(ConversationInputTranscriptionFailedUpdate update)
+    private class ConversationInputTranscriptionFailedConverter(InputAudioTranscriptionFailedUpdate update)
         : ConversationInputTranscriptionFailed
     {
         private readonly string _errorMessage = update.ErrorMessage;
@@ -137,7 +137,7 @@ public class ConversationUpdatesConverter
         public ConversationInputTranscriptionFailed Base() { return this; }
     }
 
-    private class ConversationInputTranscriptionFinishedConverter(ConversationInputTranscriptionFinishedUpdate update)
+    private class ConversationInputTranscriptionFinishedConverter(InputAudioTranscriptionFinishedUpdate update)
         : ConversationInputTranscriptionFinished
     {
         private readonly string _transcript = update.Transcript;
@@ -147,7 +147,7 @@ public class ConversationUpdatesConverter
         public ConversationInputTranscriptionFinished Base() { return this; }
     }
 
-    private class ConversationItemStreamingPartDeltaConverter(ConversationItemStreamingPartDeltaUpdate update)
+    private class ConversationItemStreamingPartDeltaConverter(OutputDeltaUpdate update)
         : ConversationItemStreamingPartDelta
     {
         private readonly BinaryData _audio = update.AudioBytes;
@@ -165,7 +165,7 @@ public class ConversationUpdatesConverter
         public ConversationItemStreamingPartDelta Base() { return this; }
     }
 
-    private class ConversationItemStreamingStartedConverter(ConversationItemStreamingStartedUpdate update)
+    private class ConversationItemStreamingStartedConverter(OutputStreamingStartedUpdate update)
         : ConversationItemStreamingStarted
     {
         private readonly string _functionName = update.FunctionName;
@@ -179,7 +179,7 @@ public class ConversationUpdatesConverter
         public ConversationItemStreamingStarted Base() { return this; }
     }
 
-    private class ConversationItemStreamingFinishedConverter(ConversationItemStreamingFinishedUpdate update)
+    private class ConversationItemStreamingFinishedConverter(OutputStreamingFinishedUpdate update)
         : ConversationItemStreamingFinished
     {
         private readonly string _functionName = update.FunctionName;

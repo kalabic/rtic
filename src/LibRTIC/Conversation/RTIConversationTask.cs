@@ -1,4 +1,4 @@
-﻿using OpenAI.RealtimeConversation;
+﻿using OpenAI.Realtime;
 using LibRTIC.BasicDevices;
 using LibRTIC.Conversation.UpdatesReceiver;
 using LibRTIC.MiniTaskLib;
@@ -60,7 +60,7 @@ public class RTIConversationTask : RTIConversation
 
     private AudioStreamBuffer? _internalAudioBuffer = null;
 
-    private RealtimeConversationClient? _client = null;
+    private RealtimeClient? _client = null;
 
     private ConversationOptions? _options = null;
 
@@ -95,7 +95,7 @@ public class RTIConversationTask : RTIConversation
         receiverQueue.Connect<MessageQueueStarted>(HandleEvent);
     }
 
-    public override void ConfigureWith(RealtimeConversationClient client, ExStream audioInputStream)
+    public override void ConfigureWith(RealtimeClient client, ExStream audioInputStream)
     {
         this._client = client;
         this._audioInputStream = audioInputStream;
@@ -280,10 +280,10 @@ public class RTIConversationTask : RTIConversation
             return;
         }
 
-        RealtimeConversationSession? session = null;
+        RealtimeSession? session = null;
         try
         {
-            session = _client.StartConversationSession(_startCanceller.Token);
+            session = _client.StartConversationSession(_options._client.AOAIDeployment, _startCanceller.Token);
             var options = ConversationSessionConfig.GetDefaultConversationSessionOptions();
             session.ConfigureSession(options, _startCanceller.Token);
         }

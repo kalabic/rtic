@@ -12,7 +12,7 @@ namespace MiniRTICallServer.RTISorcery;
 
 public class RTICMediaSession : VoIPMediaSession
 {
-    public static RTICMediaSession New(SIPUserAgent ua, SIPServerUserAgent uas, ConversationOptions? conversationOptions, string dst)
+    public static RTICMediaSession New(SIPUserAgent ua, SIPServerUserAgent uas, ConversationOptions? conversationOptions)
     {
         RTICAudioEndPoint audioEP = new RTICAudioEndPoint();
         return new RTICMediaSession(ua, uas, conversationOptions, audioEP);
@@ -32,11 +32,11 @@ public class RTICMediaSession : VoIPMediaSession
 
     private ConversationOptions _conversationOptions;
 
-    private RTIConversation _conversation;
+    private RTIConversation? _conversation = null;
 
     private Task _conversationTask;
 
-    private RTICAudioEndPoint _audioEP;
+    private RTICAudioEndPoint? _audioEP = null;
 
     public RTICMediaSession(SIPUserAgent ua, SIPServerUserAgent uas, ConversationOptions? co, RTICAudioEndPoint audioEP)
         : base(audioEP.ToMediaEndPoints())
@@ -74,31 +74,15 @@ public class RTICMediaSession : VoIPMediaSession
         _conversationTask = _conversation.RunAsync();
     }
 
-    ~RTICMediaSession()
-    {
-        Dispose(false);
-    }
-
-    public override void Dispose()
-    {
-        Dispose(true);
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            _conversation.Dispose();
-            _audioEP.Dispose();
-        }
-    }
-
     public override void Close(string reason)
     {
-        _conversation.Cancel();
+        _conversation?.Cancel();
         _conversationTask.Wait();
+        _conversation?.Dispose();
+        _conversation = null;
+        _audioEP?.Dispose();
+        _audioEP = null;
         base.Close(reason);
-        Dispose();
     }
 
     private void HandleEvent(object? s, InputAudioTaskFinished ev)

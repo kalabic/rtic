@@ -63,6 +63,10 @@ namespace MiniRTICallServer
 
     partial class Program
     {
+        private const string PUBLIC_IP_ADDRESS_ENV_VAR = "PUBLIC_IP_ADDRESS";
+        private const string RTP_PORT_ENV_VAR = "RTP_PORT";
+        private const string IS_HEADLESS_ENV_VAR = "IS_HEADLESS";
+
         //private static string DEFAULT_CALL_DESTINATION = "sip:*61@192.168.0.48";
         private static string DEFAULT_CALL_DESTINATION = "sip:aaron@127.0.0.1:7060;transport=tcp";
         private static string DEFAULT_TRANSFER_DESTINATION = "sip:*61@192.168.0.48";
@@ -92,22 +96,51 @@ namespace MiniRTICallServer
         /// </summary>
         private static ConcurrentDictionary<string, SIPRegistrationUserAgent> _registrations = new ConcurrentDictionary<string, SIPRegistrationUserAgent>();
 
+        private static string _publicIPAddress = null;
+        private static int _rtpPort = 0;
+
+        /// <summary>
+        /// If running on K8S or similar there is no console window to receive key presses.
+        /// </summary>
+        private static bool _isHeadless = false;
+
         static async Task Main()
         {
             Console.WriteLine("SIPSorcery SIP Call Server example.");
-            Console.WriteLine("Press 'c' to place a call to the default destination.");
-            Console.WriteLine("Press 'd' to send a random DTMF tone to the newest call.");
-            Console.WriteLine("Press 'h' to hangup the oldest call.");
-            Console.WriteLine("Press 'H' to hangup all calls.");
-            Console.WriteLine("Press 'l' to list current calls.");
-            Console.WriteLine("Press 'r' to list current registrations.");
-            Console.WriteLine("Press 't' to transfer the newest call to the default destination.");
-            Console.WriteLine("Press 'q' to quit.");
+
+            if (!_isHeadless)
+            {
+                Console.WriteLine("Press 'c' to place a call to the default destination.");
+                Console.WriteLine("Press 'd' to send a random DTMF tone to the newest call.");
+                Console.WriteLine("Press 'h' to hangup the oldest call.");
+                Console.WriteLine("Press 'H' to hangup all calls.");
+                Console.WriteLine("Press 'l' to list current calls.");
+                Console.WriteLine("Press 'r' to list current registrations.");
+                Console.WriteLine("Press 't' to transfer the newest call to the default destination.");
+                Console.WriteLine("Press 'q' to quit.");
+            }
 
             Log = AddConsoleLogger();
 
             // Set up a default SIP transport.
             _sipTransport = new SIPTransport();
+
+            if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(PUBLIC_IP_ADDRESS_ENV_VAR)))
+            {
+                _publicIPAddress = Environment.GetEnvironmentVariable(PUBLIC_IP_ADDRESS_ENV_VAR);
+                _sipTransport.ContactHost = _publicIPAddress;
+            }
+
+            if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(RTP_PORT_ENV_VAR)))
+            {
+                int.TryParse(Environment.GetEnvironmentVariable(RTP_PORT_ENV_VAR), out _rtpPort);
+            }
+
+            if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(IS_HEADLESS_ENV_VAR)))
+            {
+                bool.TryParse(Environment.GetEnvironmentVariable(IS_HEADLESS_ENV_VAR), out _isHeadless);
+            }
+
             _sipTransport.AddSIPChannel(new SIPUDPChannel(new IPEndPoint(IPAddress.Any, SIP_LISTEN_PORT)));
             _sipTransport.AddSIPChannel(new SIPUDPChannel(new IPEndPoint(IPAddress.IPv6Any, SIP_LISTEN_PORT)));
             _sipTransport.AddSIPChannel(new SIPTCPChannel(new IPEndPoint(IPAddress.Any, SIP_LISTEN_PORT)));
@@ -115,15 +148,33 @@ namespace MiniRTICallServer
             _sipTransport.AddSIPChannel(new SIPTLSChannel(localhostCertificate, new IPEndPoint(IPAddress.Any, SIPS_LISTEN_PORT)));
             // If it's desired to listen on a single IP address use the equivalent of:
             //_sipTransport.AddSIPChannel(new SIPUDPChannel(new IPEndPoint(IPAddress.Parse("192.168.11.50"), SIP_LISTEN_PORT)));
-            _sipTransport.EnableTraceLogs();
+            //_sipTransport.EnableTraceLogs();
 
             _sipTransport.SIPTransportRequestReceived += OnRequest;
 
             // Uncomment to enable registrations.
             //StartRegistrations(_sipTransport, _sipAccounts);
 
-            CancellationTokenSource exitCts = new CancellationTokenSource();
-            await Task.Run(() => OnKeyPress(exitCts.Token));
+            if (!_isHeadless)
+            {
+                CancellationTokenSource exitCts = new CancellationTokenSource();
+                await Task.Run(() => OnKeyPress(exitCts.Token));
+
+                Console.WriteLine("Press ctrl-c to exit.");
+            }
+            else
+            {
+                // Ctrl-c will gracefully exit the call at any point.
+                ManualResetEvent exitMre = new ManualResetEvent(false);
+                Console.CancelKeyPress += delegate (object sender, ConsoleCancelEventArgs e)
+                {
+                    e.Cancel = true;
+                    exitMre.Set();
+                };
+
+                // Wait for a signal saying the call failed, was cancelled with ctrl-c or completed.
+                exitMre.WaitOne();
+            }
 
             Log.LogInformation("Exiting...");
 
@@ -158,7 +209,7 @@ namespace MiniRTICallServer
                         ua.OnRtpEvent += (evt, hdr) => Log.LogDebug($"rtp event {evt.EventID}, duration {evt.Duration}, end of event {evt.EndOfEvent}, timestamp {hdr.Timestamp}, marker {hdr.MarkerBit}.");
                         ua.OnCallHungup += OnHangup;
 
-                        var rtpSession = CreateRtpSession(ua, null);
+                        var rtpSession = CreateRtpSession(ua, null, _rtpPort);
                         var callResult = await ua.Call(DEFAULT_CALL_DESTINATION, null, null, rtpSession);
 
                         if (callResult)
@@ -321,7 +372,7 @@ namespace MiniRTICallServer
         /// <param name="dst">THe destination specified on an incoming call. Can be used to
         /// set the audio source.</param>
         /// <returns>A new RTP session object.</returns>
-        private static VoIPMediaSession CreateRtpSession(SIPUserAgent ua, string dst)
+        private static VoIPMediaSession CreateRtpSession(SIPUserAgent ua, string dst, int bindPort)
         {
             List<AudioCodecsEnum> codecs = new List<AudioCodecsEnum> { AudioCodecsEnum.PCMU, AudioCodecsEnum.PCMA, AudioCodecsEnum.G722 };
 
@@ -335,11 +386,11 @@ namespace MiniRTICallServer
 
             AudioExtrasSource audioExtrasSource = new AudioExtrasSource(new AudioEncoder(), new AudioSourceOptions { AudioSource = audioSource });
             audioExtrasSource.RestrictFormats(formats => codecs.Contains(formats.Codec));
-            var rtpAudioSession = new VoIPMediaSession(new MediaEndPoints { AudioSource = audioExtrasSource });
+            var rtpAudioSession = new VoIPMediaSession(new MediaEndPoints { AudioSource = audioExtrasSource }, bindPort: bindPort);
             rtpAudioSession.AcceptRtpFromAny = true;
 
             // Wire up the event handler for RTP packets received from the remote party.
-            rtpAudioSession.OnRtpPacketReceived += (ep, type, rtp) => OnRtpPacketReceived(ua, type, rtp);
+            rtpAudioSession.OnRtpPacketReceived += (ep, type, rtp) => OnRtpPacketReceived(ua, ep, type, rtp);
             rtpAudioSession.OnTimeout += (mediaType) =>
             {
                 if (ua?.Dialogue != null)
@@ -364,13 +415,13 @@ namespace MiniRTICallServer
         /// <param name="dst">THe destination specified on an incoming call. Can be used to
         /// set the audio source.</param>
         /// <returns>A new RTP session object.</returns>
-        private static VoIPMediaSession CreateRTICRtpSession(ConversationOptions? conversationOptions, SIPUserAgent ua, SIPServerUserAgent uas, string dst)
+        private static VoIPMediaSession CreateRTICRtpSession(ConversationOptions? conversationOptions, SIPUserAgent ua, SIPServerUserAgent uas)
         {
-            var rtpAudioSession = RTICMediaSession.New(ua, uas, conversationOptions, dst);
+            var rtpAudioSession = RTICMediaSession.New(ua, uas, conversationOptions);
             rtpAudioSession.AcceptRtpFromAny = true;
 
             // Wire up the event handler for RTP packets received from the remote party.
-            rtpAudioSession.OnRtpPacketReceived += (ep, type, rtp) => OnRtpPacketReceived(ua, type, rtp);
+            rtpAudioSession.OnRtpPacketReceived += (ep, type, rtp) => OnRtpPacketReceived(ua, ep, type, rtp);
             rtpAudioSession.OnTimeout += (mediaType) =>
             {
                 if (ua?.Dialogue != null)
@@ -398,9 +449,10 @@ namespace MiniRTICallServer
         /// <param name="ua">The SIP user agent associated with the RTP session.</param>
         /// <param name="type">The media type of the RTP packet (audio or video).</param>
         /// <param name="rtpPacket">The RTP packet received from the remote party.</param>
-        private static void OnRtpPacketReceived(SIPUserAgent ua, SDPMediaTypesEnum type, RTPPacket rtpPacket)
+        private static void OnRtpPacketReceived(SIPUserAgent ua, IPEndPoint remoteEp, SDPMediaTypesEnum type, RTPPacket rtpPacket)
         {
             // The raw audio data is available in rtpPacket.Payload.
+            //Log.LogTrace($"OnRtpPacketReceived from {remoteEp}.");
         }
 
         /// <summary>
@@ -446,7 +498,7 @@ namespace MiniRTICallServer
                     };
 
                     var uas = ua.AcceptCall(sipRequest);
-                    CreateRTICRtpSession(null, ua, uas, sipRequest.URI.User);
+                    CreateRTICRtpSession(null, ua, uas);
                 }
                 else if (sipRequest.Method == SIPMethodsEnum.BYE)
                 {

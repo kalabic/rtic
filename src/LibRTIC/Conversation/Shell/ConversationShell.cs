@@ -1,4 +1,4 @@
-﻿using OpenAI.RealtimeConversation;
+﻿using OpenAI.Realtime;
 using LibRTIC.Config;
 using LibRTIC.Conversation.Devices;
 using LibRTIC.MiniTaskLib;
@@ -29,7 +29,7 @@ public abstract class ConversationShell : IDisposable
 
     protected ConversationShell(Info info,
                                 IConversationDevices devices,
-                                RealtimeConversationClient client,
+                                RealtimeClient client,
                                 CancellationToken cancellation)
     {
         this._info = info;

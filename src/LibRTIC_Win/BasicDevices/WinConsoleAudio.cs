@@ -1,6 +1,4 @@
 ﻿using LibRTIC.BasicDevices;
-using LibRTIC.BasicDevices.RTIC;
-using LibRTIC.Conversation;
 using LibRTIC.MiniTaskLib.Model;
 
 namespace LibRTIC_Win.BasicDevices;
@@ -17,12 +15,9 @@ public class WinConsoleAudio : RTIConsoleAudio
 
         set
         {
-            if (_firstResponseReceived)
+            if (_speaker is not null)
             {
-                if (_speaker is not null)
-                {
-                    _speaker.Volume = value;
-                }
+                _speaker.Volume = value;
             }
         }
     }
@@ -36,56 +31,23 @@ public class WinConsoleAudio : RTIConsoleAudio
     {
     }
 
-    public override void Dispose()
+    protected override void Dispose(bool disposing)
     {
-        _speaker?.Dispose();
-        _microphone?.Dispose();
+        if (disposing)
+        {
+            _speaker?.Dispose();
+            _speaker = null;
+            _microphone?.Dispose();
+            _microphone = null;
+        }
+
+        base.Dispose(disposing);
     }
 
     public override void Start(byte[]? waitingMusic = null, byte[]? helloSample = null)
     {
-        _state = RTIConsoleStateId.Inactive;
         _speaker = new SpeakerAudioStream(_info, _audioFormat, _cancellation);
         _microphone = new MicrophoneAudioStream(_info, _audioFormat, _cancellation);
-
-        if (waitingMusic is not null)
-        {
-            _speaker.Write(waitingMusic, 0, waitingMusic.Length);
-        }
-        if (helloSample is not null)
-        {
-            _helloSample = helloSample;
-        }
-    }
-
-    /// <summary>
-    /// Server VAD detected start of user's speech.
-    /// </summary>
-    /// <param name="s"></param>
-    /// <param name="update"></param>
-    public void HandleEvent(object? s, ConversationInputSpeechStarted update)
-    {
-        // Ratio speaker volume while user is speaking.
-        Volume = 0.3f;
-    }
-
-    /// <summary>
-    /// Server VAD detected end of user's speech.
-    /// </summary>
-    /// <param name="s"></param>
-    /// <param name="update"></param>
-    public void HandleEvent(object? s, ConversationInputSpeechFinished update)
-    {
-        Volume = 1.0f;
-    }
-
-    /// <summary>
-    /// Response started.
-    /// </summary>
-    /// <param name="s"></param>
-    /// <param name="update"></param>
-    public void HandleEvent(object? s, ConversationResponseStarted update)
-    {
-        _speaker?.ClearBuffer();
+        base.Start(waitingMusic, helloSample);
     }
 }

@@ -65,6 +65,8 @@ public class RTICAudioEndPoint : IAudioSource, IAudioSink, IDisposable
 
     public event EncodedSampleDelegate? OnAudioSourceEncodedSample;
 
+    public event Action<EncodedAudioFrame> OnAudioSourceEncodedFrameReady;
+
     [Obsolete("The audio source only generates encoded samples.")]
     public event RawAudioSampleDelegate OnAudioSourceRawSample
     {
@@ -321,6 +323,18 @@ public class RTICAudioEndPoint : IAudioSource, IAudioSink, IDisposable
         if (!_isAudioSinkPaused && _audioEncoder != null && microphone is not null && !microphone.IsClosed)
         {
             short[] inAudio = _audioEncoder.DecodeAudio(payload, _audioFormatManager.SelectedFormat);
+            short[] outAudio = PcmResampler.Resample(inAudio, 8000, 24000);
+            byte[] audioBuffer = outAudio.SelectMany((short x) => BitConverter.GetBytes(x)).ToArray();
+            microphone.Write(audioBuffer);
+        }
+    }
+
+    void IAudioSink.GotEncodedMediaFrame(EncodedAudioFrame encodedMediaFrame) 
+    {
+        var microphone = _audio.Microphone;
+        if (!_isAudioSinkPaused && _audioEncoder != null && microphone is not null && !microphone.IsClosed)
+        {
+            short[] inAudio = _audioEncoder.DecodeAudio(encodedMediaFrame.EncodedAudio, _audioFormatManager.SelectedFormat);
             short[] outAudio = PcmResampler.Resample(inAudio, 8000, 24000);
             byte[] audioBuffer = outAudio.SelectMany((short x) => BitConverter.GetBytes(x)).ToArray();
             microphone.Write(audioBuffer);

@@ -1,4 +1,4 @@
-﻿using OpenAI.RealtimeConversation;
+﻿using OpenAI.Realtime;
 using LibRTIC.MiniTaskLib.Model;
 using System.Text.Json.Nodes;
 
@@ -69,7 +69,7 @@ public class ConversationOptions
                 Model = "whisper-1",
             },
             TurnDetectionOptions =
-                ConversationTurnDetectionOptions.CreateServerVoiceActivityTurnDetectionOptions(
+                TurnDetectionOptions.CreateServerVoiceActivityTurnDetectionOptions(
                                     DEFAULT_SERVERVAD_THRESHOLD,
                                     TimeSpan.FromMilliseconds(DEFAULT_SERVERVAD_PREFIXPADDINGMS),
                                     TimeSpan.FromMilliseconds(DEFAULT_SERVERVAD_SILENCEDURATIONMS)),
@@ -195,7 +195,7 @@ public class ConversationOptions
                 }) < 0) { return new ConversationOptions($" * Error parsing file {sessionFile.FullName}"); }
 
                 sessionOptions.TurnDetectionOptions =
-                    ConversationTurnDetectionOptions.CreateServerVoiceActivityTurnDetectionOptions(
+                    TurnDetectionOptions.CreateServerVoiceActivityTurnDetectionOptions(
                         threshold, TimeSpan.FromMilliseconds(prefixPaddingMs), TimeSpan.FromMilliseconds(silenceDurationMs));
             }
             else if (assertParam == -1)
@@ -262,12 +262,15 @@ public class ConversationOptions
                     BinaryData? parametersData =
                         (parametersString is not null) ? BinaryData.FromString(parametersString) : null;
 
-                    ConversationFunctionTool tool = new()
+                    ConversationFunctionTool tool = new(nameValue);
+#if false // TODO
                     {
                         Name = nameValue,
                         Description = descriptionValue,
                         Parameters = parametersData,
                     };
+#endif
+
                     list.Add(tool);
                 }
                 else
