@@ -10,6 +10,8 @@ public abstract class ExStream : Stream
 
     public abstract int GetBytesAvailable();
 
+    public abstract int GetBytesUnused();
+
     public abstract void SetBufferRequest(int value);
 
     public abstract int GetBufferRequest();

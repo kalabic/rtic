@@ -4,11 +4,14 @@ using LibRTIC_Win.BasicDevices;
 
 namespace MiniRTIC;
 
+// 'game_music_loop_6' is a free sample from https://pixabay.com/sound-effects/game-music-loop-6-144641/
+// 'Hello there' is a free sample from https://pixabay.com/sound-effects/quothello-therequot-158832/
+
 public partial class Program
 {
-    static private WinConsoleWriter COut = new();
+    static private WinConsoleWriter Output = new();
 
-    static private WinConsoleAudio? ConsoleAudio = null;
+    static private WinConsoleAudio? AudioOutput = null;
 
     static private void InitializeEnvironment()
     {
@@ -18,7 +21,6 @@ public partial class Program
         ConsoleCancelEventHandler sessionCanceler = (sender, e) =>
         {
             exitSource.Cancel();
-
 #if DEBUG
             Console.Write("[ Ctrl-C ]");
 #endif
@@ -27,16 +29,14 @@ public partial class Program
         Console.CancelKeyPress += sessionCanceler;
 
         // 'game_music_loop_6' sample is playing on speaker while session is being created.
-        // It is a free sample from https://pixabay.com/sound-effects/game-music-loop-6-144641/
         byte[] inactiveStateMusic = Properties.Resources.game_music_loop_6;
 
         // 'Hello there' sample is enqueued into audio input stream when session starts.
-        // It is a free sample from https://pixabay.com/sound-effects/quothello-therequot-158832/
         byte[] helloBuffer = Properties.Resources.hello_there;
 
-        ConsoleAudio = new WinConsoleAudio(COut.Info, ConversationSessionConfig.AudioFormat, exitSource.Token);
-        ConsoleAudio.Start(inactiveStateMusic, helloBuffer);
-        COut.AddStateEventHandler(ConsoleAudio.HandleEvent);
+        AudioOutput = new WinConsoleAudio(Output.Info, ConversationSessionConfig.AudioFormat, exitSource.Token);
+        AudioOutput.Start(inactiveStateMusic, helloBuffer);
+        Output.AddStateEventHandler(AudioOutput.HandleEvent);
     }
 
     private static ConsoleKeyInfo WaitForKey(CancellationToken programCancellation)

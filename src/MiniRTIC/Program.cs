@@ -34,11 +34,11 @@ public partial class Program
 #endif
     {
         var exit = exitSource.Token;
-        InitializeEnvironment(); // Set UTF-8, handle Ctrl-C, etc.
+        InitializeEnvironment(); // Set UTF-8, handle Ctrl-C, create audio output, etc.
 
-        if (ConsoleAudio is null || ConsoleAudio.Microphone is null || ConsoleAudio.Speaker is null)
+        if (AudioOutput is null || AudioOutput.Microphone is null || AudioOutput.Speaker is null)
         {
-            COut.Info.Error("Failed to start audio devices.");
+            Output.Info.Error("Failed to start audio devices.");
             return;
         }
 
@@ -46,12 +46,12 @@ public partial class Program
         var config = ConversationOptions.FromEnvironment();
         if (config._client is null)
         {
-            COut.Info.Error("Failed to read client API options from environment.");
+            Output.Info.Error("Failed to read client API options from environment.");
             return;
         }
 
-        RTIConversation conversation = RTIConversationTask.Create(COut.Info, exit);
-        conversation.ConfigureWith(config, ConsoleAudio.Microphone);
+        RTIConversation conversation = RTIConversationTask.Create(Output.Info, exit);
+        conversation.ConfigureWith(config, AudioOutput.Microphone);
 
         //
         // A collection of events unrelated to conversation itself, but to 'Updates Receiver Task' and other utilities.
@@ -70,9 +70,9 @@ public partial class Program
 
         cev.Connect<ConversationSessionStarted>( HandleEvent );
         cev.Connect<ConversationSessionFinished>( HandleEvent );
-        cev.Connect<ConversationInputSpeechStarted>( ConsoleAudio.HandleEvent );
-        cev.Connect<ConversationInputSpeechFinished>( ConsoleAudio.HandleEvent );
-        cev.Connect<ConversationResponseStarted>( ConsoleAudio.HandleEvent);
+        cev.Connect<ConversationInputSpeechStarted>( AudioOutput.HandleEvent );
+        cev.Connect<ConversationInputSpeechFinished>( AudioOutput.HandleEvent );
+        cev.Connect<ConversationResponseStarted>( AudioOutput.HandleEvent);
         cev.Connect<ConversationResponseStarted>( HandleEvent );
         cev.Connect<ConversationResponseFinished>( HandleEvent );
         cev.Connect<ConversationInputTranscriptionFinished>( HandleEvent );
@@ -89,37 +89,37 @@ public partial class Program
                 var keyProps = WaitForKey(exit);
                 if (keyProps.KeyChar == 'q')
                 {
-                    COut.WriteLine($" >>> Quit.");
+                    Output.Info.Info("User quits.");
                     break;
                 }
             }
         }
         catch (Exception ex)
         {
-            COut.Info.ExceptionOccured(ex);
+            Output.Info.ExceptionOccured(ex);
         }
 
         conversation.Cancel();
         conversationTask.Wait();
 
-        ConsoleAudio.Dispose();
+        AudioOutput.Dispose();
         conversation.Dispose();
     }
 
     private static void HandleEvent(object? s, FailedToConnect update)
     {
         exitSource.Cancel();
-        COut.Event.ConnectingFailed(update.Message);
+        Output.Event.ConnectingFailed(update.Message);
     }
 
     private static void HandleEvent(object? s, TaskExceptionOccured update)
     {
-        COut.Info.ExceptionOccured(update.Exception);
+        Output.Info.ExceptionOccured(update.Exception);
     }
 
     private static void HandleEvent(object? s, ClientStartedConnecting update)
     {
-        COut.Event.ConnectingStarted();
+        Output.Event.ConnectingStarted();
     }
 
     /// <summary>
@@ -130,7 +130,7 @@ public partial class Program
     private static void HandleEvent(object? s, ConversationSessionStarted update)
     {
         // Notify console output that session has started.
-        COut.Event.SessionStarted(" *\n * Session started\n * Press 'q' to quit.\n *");
+        Output.Event.SessionStarted(" *\n * Session started\n * Press 'q' to quit.\n *");
     }
 
     /// <summary>
@@ -140,7 +140,7 @@ public partial class Program
     /// <param name="update"></param>
     private static void HandleEvent(object? s, ConversationSessionFinished update) 
     { 
-        COut.Event.SessionFinished("SESSION FINISHED");
+        Output.Event.SessionFinished(" *\n * Session finished\n *\n");
 
         if (!exitSource.IsCancellationRequested)
         {
@@ -157,7 +157,7 @@ public partial class Program
     /// <param name="update"></param>
     private static void HandleEvent(object? s, ConversationResponseStarted update)
     {
-        COut.Event.ItemStarted(null);
+        Output.Event.ItemStarted(null);
     }
 
     /// <summary>
@@ -167,7 +167,7 @@ public partial class Program
     /// <param name="update"></param>
     private static void HandleEvent(object? s, ConversationResponseFinished update) 
     { 
-        COut.Event.ItemFinished(); 
+        Output.Event.ItemFinished(); 
     }
 
     /// <summary>
@@ -179,7 +179,7 @@ public partial class Program
     {
         if (!String.IsNullOrEmpty(update.Transcript))
         {
-            COut.WriteLine(RTMessageType.User, update.Transcript);
+            Output.WriteLine(RTMessageType.User, update.Transcript);
         }
     }
 
@@ -192,11 +192,11 @@ public partial class Program
     {
         if (!String.IsNullOrEmpty(update.ErrorMessage))
         {
-            COut.WriteLine(RTMessageType.User, update.ErrorMessage);
+            Output.WriteLine(RTMessageType.User, update.ErrorMessage);
         }
         else
         {
-            COut.WriteLine(RTMessageType.User, "[Transcription Failed]");
+            Output.WriteLine(RTMessageType.User, "[Transcription Failed]");
         }
     }
 
@@ -209,11 +209,11 @@ public partial class Program
     {
         if (update.Audio is not null)
         {
-            ConsoleAudio?.Speaker?.Write(update.Audio);
+            AudioOutput?.Speaker?.Write(update.Audio);
         }
         if (!String.IsNullOrEmpty(update.Transcript))
         {
-            COut.Write(RTMessageType.Agent, update.Transcript);
+            Output.Write(RTMessageType.Agent, update.Transcript);
         }
     }
 }

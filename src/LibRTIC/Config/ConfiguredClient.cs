@@ -18,12 +18,19 @@ public class ConfiguredClient
         switch (options.Type)
         {
             case EndpointType.AzureOpenAIWithEntra:
+                info.Info($"Connecting to Azure OpenAI endpoint (AZURE_OPENAI_ENDPOINT): {options.AOAIEndpoint}");
+                info.Info($"Using Entra token-based authentication (AZURE_OPENAI_USE_ENTRA)");
                 return ForAzureOpenAIWithEntra(info, options.AOAIEndpoint);
 
             case EndpointType.AzureOpenAIWithKey:
+                info.Info($"Connecting to Azure OpenAI endpoint (AZURE_OPENAI_ENDPOINT): {options.AOAIEndpoint}");
+                info.Info($"Using API key (AZURE_OPENAI_API_KEY): {options.AOAIApiKey[..5]}**");
                 return ForAzureOpenAIWithKey(info, options.AOAIEndpoint, options.AOAIApiKey);
 
             case EndpointType.OpenAIWithKey:
+                string oaiEndpoint = "https://api.openai.com/v1";
+                info.Info($"Connecting to OpenAI endpoint (OPENAI_ENDPOINT): {oaiEndpoint}");
+                info.Info($"Using API key (OPENAI_API_KEY): {options.OAIApiKey[..5]}**");
                 return ForOpenAIWithKey(info, options.OAIApiKey);
         }
 
@@ -36,28 +43,18 @@ public class ConfiguredClient
 
     private static RealtimeClient ForAzureOpenAIWithEntra(Info info, string aoaiEndpoint)
     {
-        info.Info($" * Connecting to Azure OpenAI endpoint (AZURE_OPENAI_ENDPOINT): {aoaiEndpoint}");
-        info.Info($" * Using Entra token-based authentication (AZURE_OPENAI_USE_ENTRA)");
-
         AzureOpenAIClient aoaiClient = new(new Uri(aoaiEndpoint), new DefaultAzureCredential());
         return aoaiClient.GetRealtimeClient();
     }
 
     private static RealtimeClient ForAzureOpenAIWithKey(Info info, string aoaiEndpoint, string aoaiApiKey)
     {
-        info.Info($" * Connecting to Azure OpenAI endpoint (AZURE_OPENAI_ENDPOINT): {aoaiEndpoint}");
-        info.Info($" * Using API key (AZURE_OPENAI_API_KEY): {aoaiApiKey[..5]}**");
-
         AzureOpenAIClient aoaiClient = new(new Uri(aoaiEndpoint), new ApiKeyCredential(aoaiApiKey));
         return aoaiClient.GetRealtimeClient();
     }
 
     private static RealtimeClient ForOpenAIWithKey(Info info, string oaiApiKey)
     {
-        string oaiEndpoint = "https://api.openai.com/v1";
-        info.Info($" * Connecting to OpenAI endpoint (OPENAI_ENDPOINT): {oaiEndpoint}");
-        info.Info($" * Using API key (OPENAI_API_KEY): {oaiApiKey[..5]}**");
-
         OpenAIClient aoaiClient = new(new ApiKeyCredential(oaiApiKey));
         return aoaiClient.GetRealtimeClient();
     }

@@ -1,28 +1,21 @@
-﻿namespace LibRTIC.BasicDevices.RTIC;
+﻿using LibRTIC.MiniTaskLib.Model;
+
+namespace LibRTIC.BasicDevices.RTIC;
 
 /// <summary>
 /// Console output adjusted to format of realtime interactive conversation between a user and an AI agent.
 /// </summary>
 public class RTIConsole 
     : IRTIStateCollection
-    , IRTConsole
+    , IRTOutput
+    , ISessionEventProcessor
     , ISystemConsole
 {
-    public ISystemConsole? COut 
-    { 
-        set 
-        {
-            lock(_locker)
-            {
-                _inactive.SetCOut(value);
-                _connecting.SetCOut(value);
-                _waitingItem.SetCOut(value);
-                _writingItem.SetCOut(value);
-            }
-        }
-    }
-
     public event EventHandler<RTIConsoleStateId>? StateUpdate;
+
+    public IRTSessionEvents Event { get { return _sessionEventProxy; } }
+
+    public Info Info { get { return _consoleNotification; } }
 
     public IRTIConsoleState State_CurrentState { get { return _currentState; } }
 
@@ -39,6 +32,8 @@ public class RTIConsole
 
     protected object _locker = new object();
 
+    protected ConsoleNotification _consoleNotification;
+
     protected IRTIConsoleState? _fixedState = null;
 
     protected IRTIConsoleState _currentState;
@@ -53,6 +48,8 @@ public class RTIConsole
 
     protected RTIConsoleStateBase _writingItem;
 
+    private RTISessionEventProxy _sessionEventProxy;
+
     public RTIConsole(RTIConsoleStateBase inactive,
                       RTIConsoleStateBase connecting,
                       RTIConsoleStateBase answering,
@@ -60,6 +57,7 @@ public class RTIConsole
                       RTIConsoleStateBase writingItem,
                       ISystemConsole? cout = null)
     {
+        _consoleNotification = new(this);
         _inactive = inactive;
         _connecting = connecting;
         _answering = answering;
@@ -67,6 +65,8 @@ public class RTIConsole
         _writingItem = writingItem;
 
         _currentState = _inactive;
+
+        _sessionEventProxy = new(this);
     }
 
     public void SetFixedState(IRTIConsoleState value)
@@ -81,7 +81,7 @@ public class RTIConsole
         }
     }
 
-    private void ProcessSessionEvent(RTISessionEventId sessionEvent, string? message)
+    public void ProcessSessionEvent(RTISessionEventId sessionEvent, string? message)
     {
         lock (_locker)
         {
@@ -144,45 +144,7 @@ public class RTIConsole
     }
 
     //
-    // IRTISessionEvents interface
-    //
-
-    public void ConnectingStarted(string? message = null)
-    {
-        ProcessSessionEvent(RTISessionEventId.ConnectingStarted, null);
-    }
-
-    public void ConnectingFailed(string? message = null)
-    {
-        ProcessSessionEvent(RTISessionEventId.ConnectingFailed, message);
-    }
-
-    public void SessionStarted(string? message = null)
-    {
-        ProcessSessionEvent(RTISessionEventId.SessionStarted, message);
-    }
-
-    public void SessionFinished(string? message = null)
-    {
-        ProcessSessionEvent(RTISessionEventId.SessionFinished, message);
-    }
-
-    public void ItemStarted(string? message = null)
-    {
-#if DEBUG_VERBOSE
-        ProcessSessionEvent(RTISessionEventId.ItemStarted, message);
-#else
-        ProcessSessionEvent(RTISessionEventId.ItemStarted, null);
-#endif
-    }
-
-    public void ItemFinished(string? message = null)
-    {
-        ProcessSessionEvent(RTISessionEventId.ItemFinished, null);
-    }
-
-    //
-    // IDefaultConsoleOutput
+    // ISystemConsole
     //
 
     public void SetCursorLeft(int value)

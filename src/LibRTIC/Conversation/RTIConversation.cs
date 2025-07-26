@@ -11,6 +11,7 @@ namespace LibRTIC.Conversation;
 public abstract class RTIConversation : TaskListBase
 {
     /// <summary>
+    /// Events unrelated to conversation itself, but to network connection, tools, etc.
     /// <list type = "bullet">
     ///   <item><see cref="ClientStartedConnecting"></item>
     ///   <item><see cref="InputAudioTaskFinished"></item>
@@ -20,6 +21,7 @@ public abstract class RTIConversation : TaskListBase
     public abstract EventCollection ReceiverEvents { get; }
 
     /// <summary>
+    /// Conversation related events.
     /// <list type = "bullet">
     ///   <item><see cref="ConversationSessionFinished"></item>
     ///   <item><see cref="ConversationSessionStarted"></item>
