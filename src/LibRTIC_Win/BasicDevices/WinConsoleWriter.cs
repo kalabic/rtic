@@ -5,13 +5,13 @@ using LibRTIC.MiniTaskLib.Model;
 
 namespace LibRTIC_Win.BasicDevices;
 
-public class WinConsoleWriter : IRTWriter
+public class WinConsoleWriter : IRTOutput
 {
     public SystemConsole SystemConsole { get { return _sysConsole; } }
 
-    public IRTSessionEvents Event { get { return _mainConsole; } }
+    public IRTSessionEvents Event { get { return _mainConsole.Event; } }
 
-    public Info Info { get { return _consoleNotification; } }
+    public Info Info { get { return _mainConsole.Info; } }
 
 
 
@@ -19,14 +19,11 @@ public class WinConsoleWriter : IRTWriter
 
     private RTIConsole _mainConsole;
 
-    private ConsoleNotification _consoleNotification;
-
 
     public WinConsoleWriter()
     {
         _sysConsole = new();
         _mainConsole = RTICmdLineConsole.New(_sysConsole);
-        _consoleNotification = new(_mainConsole);
     }
 
     public void AddStateEventHandler(EventHandler<RTIConsoleStateId> stateUpdate)

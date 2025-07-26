@@ -40,6 +40,20 @@ public class CircularBuffer
 
     //
     // Summary:
+    //     Number of bytes currently unused in the circular buffer
+    public int UnusedCount
+    {
+        get
+        {
+            lock (lockObject)
+            {
+                return buffer.Length - byteCount;
+            }
+        }
+    }
+
+    //
+    // Summary:
     //     Create a new circular buffer
     //
     // Parameters:

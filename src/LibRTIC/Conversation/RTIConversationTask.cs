@@ -27,9 +27,9 @@ public class RTIConversationTask : RTIConversation
 
     private const int AUDIO_INPUT_PACKET_MINIMUM = 2048;
 
-    private const int AUDIO_INPUT_PACKET = (AUDIO_INPUT_PACKET_MINIMUM * 4);
+    private const int AUDIO_INPUT_PACKET = (AUDIO_INPUT_PACKET_MINIMUM * 8);
 
-    private const int INPUT_AUDIO_ACTION_PERIOD = 500;
+    private const int INPUT_AUDIO_ACTION_PERIOD = 200;
 
     private const int WAIT_MINIMUM_DATA_MS = 100;
 
@@ -95,12 +95,22 @@ public class RTIConversationTask : RTIConversation
         receiverQueue.Connect<MessageQueueStarted>(HandleEvent);
     }
 
+    /// <summary>
+    /// WIP, not used at all for now.
+    /// </summary>
+    /// <param name="client"></param>
+    /// <param name="audioInputStream"></param>
     public override void ConfigureWith(RealtimeClient client, ExStream audioInputStream)
     {
-        this._client = client;
-        this._audioInputStream = audioInputStream;
+        throw new NotImplementedException();
     }
 
+    /// <summary>
+    /// WIP, 'ConversationOptions' not used properly. Session options always loaded from
+    /// <see cref="ConversationSessionConfig.GetDefaultConversationSessionOptions"/>.
+    /// </summary>
+    /// <param name="options"></param>
+    /// <param name="audioInputStream"></param>
     public override void ConfigureWith(ConversationOptions options, ExStream audioInputStream)
     {
         this._options = options;
@@ -174,6 +184,8 @@ public class RTIConversationTask : RTIConversation
     public override void Cancel()
     {
         _startCanceller?.CancelAsync();
+        _audioInputStream?.Cancel();
+        _internalAudioBuffer?.Cancel();
         _receiver.CancelMicrophone();
         _receiver.FinishReceiver();
     }
@@ -324,7 +336,7 @@ public class RTIConversationTask : RTIConversation
     }
 
     /// <summary>
-    /// Invoked as an event handler for <see cref="ConversationSessionStarted"/> that is connected to this method if
+    /// Invoked as an event handler for <see cref="ConversationSessionConfigured"/> that is connected to this method if
     /// function <see cref="NetworkConnectionEntry"/> has managed to connect with the server.
     /// </summary>
     /// <exception cref="InvalidOperationException"></exception>
@@ -386,39 +398,22 @@ public class RTIConversationTask : RTIConversation
     /// </summary>
     private void InputAudioAction()
     {
-        var totalRead = 0;
-        byte[] buffer = new byte[AUDIO_INPUT_PACKET];
-
         if (_internalAudioBuffer is not null &&
             _internalAudioBuffer.CanWrite &&
-            _audioCancellation is not null && 
+            _audioCancellation is not null &&
+            !_audioCancellation.IsCancellationRequested &&
             _audioInputStream is not null &&
             _audioInputStream.CanRead)
         {
-            // First try to read complete chunks of size 'AUDIO_INPUT_PACKET'.
-            while (!_audioCancellation.IsCancellationRequested)
-            {
-                var bytesRead = _audioInputStream.MovePacket(_internalAudioBuffer, buffer);
-                if (bytesRead > 0)
-                {
-                    totalRead += bytesRead;
-                }
-                else
-                {
-                    break;
-                }
-            }
+            int bytesRead = -1;
+            byte[] buffer = new byte[AUDIO_INPUT_PACKET_MINIMUM];
 
-            // Important to always try to send at least some audio, even empty.
-            if (totalRead == 0)
+            // Try to read complete chunks of size 'AUDIO_INPUT_PACKET_MINIMUM'.
+            while (!_audioCancellation.IsCancellationRequested && 
+                   (_internalAudioBuffer.GetBytesUnused() >= AUDIO_INPUT_PACKET_MINIMUM) &&
+                   bytesRead != 0)
             {
-                var bytesRead = _audioInputStream.Read(buffer, 0, AUDIO_INPUT_PACKET);
-                if (bytesRead == 0)
-                {
-                    // Assumed is that default value of bytes in buffer is 0 (and that the buffer is empty at this point).
-                    bytesRead = AUDIO_INPUT_PACKET_MINIMUM;
-                }
-                _internalAudioBuffer.Write(buffer, 0, bytesRead);
+                bytesRead = _audioInputStream.MovePacket(_internalAudioBuffer, buffer);
             }
         }
     }

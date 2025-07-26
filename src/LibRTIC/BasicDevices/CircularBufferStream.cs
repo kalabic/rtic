@@ -1,6 +1,5 @@
 ﻿using LibRTIC.MiniTaskLib;
 using LibRTIC.MiniTaskLib.Model;
-using System;
 using System.Text;
 
 namespace LibRTIC.BasicDevices;
@@ -169,7 +168,22 @@ public class CircularBufferStream : ExStream
         {
             if (!IsCancellationRequested)
             {
-                return (_streamBuffer is not null) ? _streamBuffer.Count : -1; ;
+                return (_streamBuffer is not null) ? _streamBuffer.Count : -1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+    }
+
+    public override int GetBytesUnused()
+    {
+        lock (_lockObject)
+        {
+            if (!IsCancellationRequested)
+            {
+                return (_streamBuffer is not null) ? _streamBuffer.UnusedCount : -1;
             }
             else
             {
@@ -254,15 +268,28 @@ public class CircularBufferStream : ExStream
 
     public override int MovePacket(ExStream other, byte[] buffer)
     {
-        if (GetBytesAvailable() >= buffer.Length)
+        int bytesRead = 0;
+
+        lock (_lockObject)
         {
-            var bytesRead = Read(buffer, 0, buffer.Length);
-            if (bytesRead > 0)
+            if (_streamBuffer is not null && 
+                !IsCancellationRequested &&
+                _streamBuffer.Count >= buffer.Length)
             {
-                other.Write(buffer, 0, bytesRead);
-                return bytesRead;
+                bytesRead = _streamBuffer.Read(buffer, 0, buffer.Length);
+                if (_streamBuffer.Count == 0)
+                {
+                    _streamEvent.Reset();
+                }
             }
         }
+
+        if (bytesRead == buffer.Length)
+        {
+            other.Write(buffer, 0, buffer.Length);
+            return bytesRead;
+        }
+
         return 0;
     }
 }
