@@ -4,14 +4,12 @@ public abstract class DisposableBase : IDisposable
 {
     public bool IsDisposed { get { return _disposed; } protected set { _disposed = value; } }
 
-#if DEBUG_UNDISPOSED
     private bool _disposed = false;
 
     ~DisposableBase()
     {
         Dispose(false);
     }
-#endif
 
     public void Dispose()
     {

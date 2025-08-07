@@ -1,5 +1,5 @@
-﻿using OpenAI.Realtime;
-using LibRTIC.BasicDevices;
+﻿using AudioFormatLib;
+using OpenAI.Realtime;
 
 namespace LibRTIC.Config;
 
@@ -10,11 +10,11 @@ public class ConversationSessionConfig
     //
     // Input and output audio format.
     //
+    public const ASampleFormat SAMPLE_FORMAT = ASampleFormat.S16;
     public const int SAMPLES_PER_SECOND = 24000;
-    public const int BYTES_PER_SAMPLE = 2;
     public const int CHANNELS = 1;
     public const int AUDIO_INPUT_BUFFER_SECONDS = 2;
-    public static readonly AudioStreamFormat AudioFormat = new(SAMPLES_PER_SECOND, CHANNELS, BYTES_PER_SAMPLE);
+    public static readonly AFrameFormat AudioFormat = new(SAMPLE_FORMAT, SAMPLES_PER_SECOND, CHANNELS);
 
     //
     // Default values for ServerVAD options.

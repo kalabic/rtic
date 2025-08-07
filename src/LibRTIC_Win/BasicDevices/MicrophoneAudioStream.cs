@@ -1,6 +1,6 @@
-﻿using NAudio.Wave;
-using LibRTIC.BasicDevices;
-using LibRTIC.MiniTaskLib.Model;
+﻿using AudioFormatLib;
+using AudioFormatLib.Buffers;
+using NAudio.Wave;
 
 namespace LibRTIC_Win.BasicDevices;
 
@@ -14,12 +14,12 @@ public class MicrophoneAudioStream : CircularBufferStream
 
     EventHandler<WaveInEventArgs> handleDataAvailable;
 
-    public MicrophoneAudioStream(Info info, AudioStreamFormat audioFormat, CancellationToken microphoneToken)
-        : base(info, audioFormat.BufferSizeFromSeconds(5), microphoneToken)
+    public MicrophoneAudioStream(AFrameFormat audioFormat, CancellationToken microphoneToken)
+        : base((int)audioFormat.BufferSizeFromSeconds(5), microphoneToken)
     {
         _waveInEvent = new()
         {
-            WaveFormat = new WaveFormat(audioFormat.SamplesPerSecond, audioFormat.BitsPerSample, audioFormat.ChannelCount)
+            WaveFormat = new WaveFormat(audioFormat.SampleRate, audioFormat.SampleFormat.Bits(), audioFormat.ChannelFormat.Count)
         };
         handleDataAvailable = (_, e) =>
         {

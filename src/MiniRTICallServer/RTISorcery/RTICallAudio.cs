@@ -1,4 +1,6 @@
-﻿using LibRTIC.BasicDevices;
+﻿using AudioFormatLib;
+using AudioFormatLib.Buffers;
+using LibRTIC.BasicDevices;
 using LibRTIC.Conversation;
 using LibRTIC.MiniTaskLib.Model;
 using LibRTIC.MiniTaskLib;
@@ -8,9 +10,9 @@ namespace MiniRTICallServer.RTISorcery;
 
 public class RTICallAudio : RTIConsoleAudio
 {
-    public override ExStream? Speaker { get { return _responseBuffer; } }
+    public override IStreamBuffer? Speaker { get { return _responseBuffer; } }
 
-    public override ExStream? Microphone { get { return _speechInput; } }
+    public override IStreamBuffer? Microphone { get { return _speechInput; } }
 
     public override float Volume
     {
@@ -23,11 +25,11 @@ public class RTICallAudio : RTIConsoleAudio
 
     private CircularBufferStream _responseBuffer;
 
-    public RTICallAudio(Info info, AudioStreamFormat audioFormat)
+    public RTICallAudio(Info info, AFrameFormat audioFormat)
         : base(info, audioFormat, CancellationToken.None)
     {
-        _speechInput = new AudioStreamBuffer(_info, audioFormat, 2, CancellationToken.None);
-        _responseBuffer = new CircularBufferStream(_info, audioFormat.BufferSizeFromSeconds(60 * 5), CancellationToken.None);
+        _speechInput = new AudioStreamBuffer(audioFormat, 2, CancellationToken.None);
+        _responseBuffer = new CircularBufferStream((int)audioFormat.BufferSizeFromSeconds(60 * 5), CancellationToken.None);
     }
 
     protected override void Dispose(bool disposing)

@@ -1,4 +1,6 @@
-﻿using LibRTIC.BasicDevices.RTIC;
+﻿using AudioFormatLib;
+using AudioFormatLib.Buffers;
+using LibRTIC.BasicDevices.RTIC;
 using LibRTIC.Conversation;
 using LibRTIC.MiniTaskLib.Base;
 using LibRTIC.MiniTaskLib.Model;
@@ -28,15 +30,15 @@ public abstract class RTIConsoleAudio : DisposableBase
 {
     private const int INPUT_AUDIO_WAIT_PERIOD = 500;
 
-    public abstract ExStream? Speaker { get; }
+    public abstract IStreamBuffer? Speaker { get; }
 
-    public abstract ExStream? Microphone { get; }
+    public abstract IStreamBuffer? Microphone { get; }
 
     public virtual float Volume { get; set; }
 
     protected Info _info;
 
-    protected AudioStreamFormat _audioFormat;
+    protected AFrameFormat _audioFormat;
 
     protected CancellationToken _cancellation;
 
@@ -50,7 +52,7 @@ public abstract class RTIConsoleAudio : DisposableBase
 
 
     public RTIConsoleAudio(Info info,
-                           AudioStreamFormat audioFormat,
+                           AFrameFormat audioFormat,
                            CancellationToken cancellation)
     {
         this._info = info;
@@ -81,7 +83,7 @@ public abstract class RTIConsoleAudio : DisposableBase
 
         if (waitingMusic is not null && Speaker is not null)
         {
-            Speaker.Write(waitingMusic, 0, waitingMusic.Length);
+            Speaker.GetOutputStream().Write(waitingMusic, 0, waitingMusic.Length);
         }
         if (helloSample is not null)
         {
@@ -100,7 +102,7 @@ public abstract class RTIConsoleAudio : DisposableBase
         if (_state == RTIConsoleStateId.Answering && _helloSample is not null)
         {
             Microphone?.ClearBuffer();
-            Microphone?.Write(_helloSample, 0, _helloSample.Length);
+            Microphone?.GetOutputStream().Write(_helloSample, 0, _helloSample.Length);
             _helloSample = null;
 
             _timer = new();
@@ -156,7 +158,7 @@ public abstract class RTIConsoleAudio : DisposableBase
     {
         if (_state == RTIConsoleStateId.Answering && _silenceBuffer is not null)
         {
-            Microphone?.Write(_silenceBuffer, 0, _silenceBuffer.Length);
+            Microphone?.GetOutputStream().Write(_silenceBuffer, 0, _silenceBuffer.Length);
         }
     }
 }

@@ -1,8 +1,8 @@
-﻿using OpenAI.Realtime;
-using LibRTIC.BasicDevices;
+﻿using AudioFormatLib.Buffers;
 using LibRTIC.Config;
 using LibRTIC.MiniTaskLib;
 using LibRTIC.MiniTaskLib.Base;
+using OpenAI.Realtime;
 
 namespace LibRTIC.Conversation;
 
@@ -33,9 +33,9 @@ public abstract class RTIConversation : TaskListBase
     /// </summary>
     public abstract EventQueue ConversationEvents { get; }
 
-    public abstract void ConfigureWith(RealtimeClient client, ExStream audioInputStream);
+    public abstract void ConfigureWith(RealtimeClient client, IStreamBuffer audioInputStream);
 
-    public abstract void ConfigureWith(ConversationOptions options, ExStream audioInputStream);
+    public abstract void ConfigureWith(ConversationOptions options, IStreamBuffer audioInputStream);
 
     public abstract void Run();
 
