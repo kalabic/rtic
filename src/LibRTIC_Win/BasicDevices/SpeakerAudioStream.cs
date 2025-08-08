@@ -1,5 +1,6 @@
-﻿using NAudio.Wave;
-using LibRTIC.MiniTaskLib.Model;
+﻿using AudioFormatLib;
+using AudioFormatLib.Buffers;
+using NAudio.Wave;
 
 namespace LibRTIC.BasicDevices;
 
@@ -48,16 +49,15 @@ public class SpeakerAudioStream : CircularBufferStream
         set { waveOut.Volume = value; }
     }
 
-    public SpeakerAudioStream(Info info,
-                              AudioStreamFormat audioFormat,
+    public SpeakerAudioStream(AFrameFormat audioFormat,
                               CancellationToken speakerToken)
-        : base(info, audioFormat.BufferSizeFromSeconds(BUFFER_SECONDS), speakerToken)
+        : base((int)audioFormat.BufferSizeFromSeconds(BUFFER_SECONDS), speakerToken)
     {
         waveFormat = new
         (
-            rate: audioFormat.SamplesPerSecond,
-            bits: audioFormat.BitsPerSample,
-            channels: audioFormat.ChannelCount
+            rate: audioFormat.SampleRate,
+            bits: audioFormat.SampleFormat.Bits(),
+            channels: audioFormat.ChannelFormat.Count
         );
         provider = new WaveBufferProvider(this, waveFormat);
         waveOut = new WaveOutEvent();
@@ -68,8 +68,8 @@ public class SpeakerAudioStream : CircularBufferStream
         _suspendUntilBuffered = audioFormat.BufferSizeFromMiliseconds(SUSPEND_UNTIL_ENQUED_LENGTHMS);
     }
 
-    public SpeakerAudioStream(Info info, AudioStreamFormat audioFormat)
-        : this(info, audioFormat, CancellationToken.None)
+    public SpeakerAudioStream(AFrameFormat audioFormat)
+        : this(audioFormat, CancellationToken.None)
     { }
 
     protected override void Dispose(bool disposing)

@@ -1,13 +1,15 @@
-﻿using LibRTIC.BasicDevices;
+﻿using AudioFormatLib;
+using AudioFormatLib.Buffers;
+using LibRTIC.BasicDevices;
 using LibRTIC.MiniTaskLib.Model;
 
 namespace LibRTIC_Win.BasicDevices;
 
 public class WinConsoleAudio : RTIConsoleAudio
 {
-    public override ExStream? Speaker { get { return _speaker; } }
+    public override IStreamBuffer? Speaker { get { return _speaker; } }
 
-    public override ExStream? Microphone { get { return _microphone; } }
+    public override IStreamBuffer? Microphone { get { return _microphone; } }
 
     public override float Volume
     {
@@ -26,7 +28,7 @@ public class WinConsoleAudio : RTIConsoleAudio
 
     private MicrophoneAudioStream? _microphone = null;
 
-    public WinConsoleAudio(Info info, AudioStreamFormat audioFormat, CancellationToken cancellation) 
+    public WinConsoleAudio(Info info, AFrameFormat audioFormat, CancellationToken cancellation) 
         : base(info, audioFormat, cancellation)
     {
     }
@@ -46,8 +48,8 @@ public class WinConsoleAudio : RTIConsoleAudio
 
     public override void Start(byte[]? waitingMusic = null, byte[]? helloSample = null)
     {
-        _speaker = new SpeakerAudioStream(_info, _audioFormat, _cancellation);
-        _microphone = new MicrophoneAudioStream(_info, _audioFormat, _cancellation);
+        _speaker = new SpeakerAudioStream(_audioFormat, _cancellation);
+        _microphone = new MicrophoneAudioStream(_audioFormat, _cancellation);
         base.Start(waitingMusic, helloSample);
     }
 }

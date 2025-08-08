@@ -1,4 +1,4 @@
-﻿using LibRTIC.BasicDevices;
+﻿using AudioFormatLib.Buffers;
 using LibRTIC.Conversation.Shell;
 using LibRTIC.MiniTaskLib;
 
@@ -8,7 +8,7 @@ public interface IConversationDevices : IDisposable
 {
     public void ConnectingStarted();
 
-    public ExStream GetAudioInput();
+    public IStreamBuffer GetAudioInput();
 
     public void ConnectReceiverEvents(EventCollection receiverEvents);
 

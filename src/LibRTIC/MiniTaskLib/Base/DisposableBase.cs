@@ -6,6 +6,11 @@ public abstract class DisposableBase : IDisposable
 
     private bool _disposed = false;
 
+    ~DisposableBase()
+    {
+        Dispose(false);
+    }
+
     public void Dispose()
     {
         Dispose(true);

@@ -1,10 +1,10 @@
-﻿using OpenAI.Realtime;
-using LibRTIC.BasicDevices;
+﻿using AudioFormatLib.Buffers;
 using LibRTIC.Conversation.UpdatesReceiver;
 using LibRTIC.MiniTaskLib;
 using LibRTIC.MiniTaskLib.Events;
 using LibRTIC.MiniTaskLib.Model;
 using LibRTIC.Config;
+using OpenAI.Realtime;
 using System.Net.WebSockets;
 using static LibRTIC.Conversation.FailedToConnect;
 
@@ -56,7 +56,7 @@ public class RTIConversationTask : RTIConversation
 
     private CancellationTokenSource? _audioCancellation = null;
 
-    private ExStream? _audioInputStream = null;
+    private IStreamBuffer? _audioInputStream = null;
 
     private AudioStreamBuffer? _internalAudioBuffer = null;
 
@@ -100,7 +100,7 @@ public class RTIConversationTask : RTIConversation
     /// </summary>
     /// <param name="client"></param>
     /// <param name="audioInputStream"></param>
-    public override void ConfigureWith(RealtimeClient client, ExStream audioInputStream)
+    public override void ConfigureWith(RealtimeClient client, IStreamBuffer audioInputStream)
     {
         throw new NotImplementedException();
     }
@@ -111,7 +111,7 @@ public class RTIConversationTask : RTIConversation
     /// </summary>
     /// <param name="options"></param>
     /// <param name="audioInputStream"></param>
-    public override void ConfigureWith(ConversationOptions options, ExStream audioInputStream)
+    public override void ConfigureWith(ConversationOptions options, IStreamBuffer audioInputStream)
     {
         this._options = options;
         this._audioInputStream = audioInputStream;
@@ -366,7 +366,7 @@ public class RTIConversationTask : RTIConversation
         // An intermediate buffer between 'send audio' task and input audio source (microphone). TODO: Will be useful later.
         //
         _internalAudioBuffer = new AudioStreamBuffer(
-            _info, ConversationSessionConfig.AudioFormat, ConversationSessionConfig.AUDIO_INPUT_BUFFER_SECONDS, _audioCancellation.Token);
+            ConversationSessionConfig.AudioFormat, ConversationSessionConfig.AUDIO_INPUT_BUFFER_SECONDS, _audioCancellation.Token);
         _internalAudioBuffer.SetWaitMinimumData(WAIT_MINIMUM_DATA_MS);
 
         //

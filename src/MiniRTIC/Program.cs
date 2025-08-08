@@ -209,7 +209,7 @@ public partial class Program
     {
         if (update.Audio is not null)
         {
-            AudioOutput?.Speaker?.Write(update.Audio);
+            AudioOutput?.Speaker?.GetOutputStream().Write(update.Audio);
         }
         if (!String.IsNullOrEmpty(update.Transcript))
         {
