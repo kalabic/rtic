@@ -68,11 +68,12 @@ public partial class Program
         //
         var cev = conversation.ConversationEvents;
 
+        cev.Connect<ConversationInputSpeechStarted>(AudioOutput.HandleEvent);
+        cev.Connect<ConversationInputSpeechFinished>(AudioOutput.HandleEvent);
+        cev.Connect<ConversationResponseStarted>(AudioOutput.HandleEvent);
+
         cev.Connect<ConversationSessionStarted>( HandleEvent );
         cev.Connect<ConversationSessionFinished>( HandleEvent );
-        cev.Connect<ConversationInputSpeechStarted>( AudioOutput.HandleEvent );
-        cev.Connect<ConversationInputSpeechFinished>( AudioOutput.HandleEvent );
-        cev.Connect<ConversationResponseStarted>( AudioOutput.HandleEvent);
         cev.Connect<ConversationResponseStarted>( HandleEvent );
         cev.Connect<ConversationResponseFinished>( HandleEvent );
         cev.Connect<ConversationInputTranscriptionFinished>( HandleEvent );
@@ -209,7 +210,7 @@ public partial class Program
     {
         if (update.Audio is not null)
         {
-            AudioOutput?.Speaker?.GetOutputStream().Write(update.Audio);
+            AudioOutput?.Speaker?.GetStreamInput().Write(update.Audio);
         }
         if (!String.IsNullOrEmpty(update.Transcript))
         {

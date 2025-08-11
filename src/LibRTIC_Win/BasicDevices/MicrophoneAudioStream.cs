@@ -4,26 +4,32 @@ using NAudio.Wave;
 
 namespace LibRTIC_Win.BasicDevices;
 
-public class MicrophoneAudioStream : CircularBufferStream
+public class MicrophoneAudioStream : AudioStreamBuffer
 {
     // For simplicity, to be able to queue 'Hello there' sample in all kinds of scenarios,
     // this is configured to use a static 3-second ring buffer. TODO: Fix this
     public const int BUFFER_SECONDS = 3;
 
-    private WaveInEvent _waveInEvent;
+    public static MicrophoneAudioStream Create(ABufferParams bp, CancellationToken microphoneToken)
+    {
+        // bp.WaitForCompleteRead = true;
+        return new MicrophoneAudioStream(bp, microphoneToken);
+    }
+
+    private WaveInEvent? _waveInEvent;
 
     EventHandler<WaveInEventArgs> handleDataAvailable;
 
-    public MicrophoneAudioStream(AFrameFormat audioFormat, CancellationToken microphoneToken)
-        : base((int)audioFormat.BufferSizeFromSeconds(5), microphoneToken)
+    private MicrophoneAudioStream(ABufferParams bp, CancellationToken microphoneToken)
+        : base(bp, microphoneToken)
     {
         _waveInEvent = new()
         {
-            WaveFormat = new WaveFormat(audioFormat.SampleRate, audioFormat.SampleFormat.Bits(), audioFormat.ChannelFormat.Count)
+            WaveFormat = new WaveFormat(bp.Format.SampleRate, bp.Format.SampleFormat.Bits(), bp.Format.ChannelLayout.Count)
         };
         handleDataAvailable = (_, e) =>
         {
-            Write(e.Buffer, 0, e.BytesRecorded);
+            GetStreamInput().Write(e.Buffer, 0, e.BytesRecorded);
         };
         _waveInEvent.DataAvailable += handleDataAvailable;
         _waveInEvent.StartRecording();
@@ -34,34 +40,18 @@ public class MicrophoneAudioStream : CircularBufferStream
         // Release managed resources.
         if (disposing && (_waveInEvent is not null))
         {
+            CloseBuffer();
             _waveInEvent.DataAvailable -= handleDataAvailable;
+            _waveInEvent.Dispose();
         }
 
-        // Release unmanaged resources.
-        _waveInEvent?.Dispose();
+        _waveInEvent = null;
         base.Dispose(disposing);
     }
 
-    public override void Close()
+    public override void CloseBuffer()
     {
-        _waveInEvent.StopRecording();
-        base.Close();
+        _waveInEvent?.StopRecording();
+        base.CloseBuffer();
     }
-
-    public override int Read(byte[] buffer, int offset, int count)
-    {
-        // For simplicity, block until all requested data is available and do not perform partial reads.
-        if (!WaitDataAvailable(count))
-        {
-            return 0;
-        }
-
-        return base.Read(buffer, offset, count);
-    }
-
-    public override bool CanRead => true;
-
-    public override bool CanSeek => false;
-
-    public override bool CanWrite => false;
 }

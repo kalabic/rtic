@@ -1,6 +1,8 @@
 ﻿using AudioFormatLib;
 using AudioFormatLib.Buffers;
+using AudioFormatLib.IO;
 using AudioFormatLib.Resampler;
+using AudioFormatLib.Utils;
 using LibRTIC.Config;
 using LibRTIC.Conversation;
 using LibRTIC.MiniTaskLib;
@@ -9,6 +11,7 @@ using MiniRTICallServer.RTISorcery.RTICallSessionConsole;
 using SIPSorcery;
 using SIPSorcery.Media;
 using SIPSorceryMedia.Abstractions;
+using System.Diagnostics;
 using System.Net;
 using Timer = System.Timers.Timer;
 
@@ -18,12 +21,16 @@ public class RTICAudioEndPoint : IAudioSource, IAudioSink, IDisposable
 {
     private const int RESPONSE_AUDIO_INTERVAL = 500;
 
+    private int _timerLock = 0;
+
+    private int _encodedMediaLock = 0;
+
     public static readonly AudioSamplingRatesEnum DefaultAudioSourceSamplingRate = AudioSamplingRatesEnum.Rate8KHz;
 
     public static readonly AudioSamplingRatesEnum DefaultAudioPlaybackRate = AudioSamplingRatesEnum.Rate8KHz;
 
 
-    public IStreamBuffer? Microphone { get { return _audio.Microphone; } }
+    public IAudioBuffer? Microphone { get { return _audio.Microphone; } }
 
 
 
@@ -43,9 +50,9 @@ public class RTICAudioEndPoint : IAudioSource, IAudioSink, IDisposable
 
     private RTICallAudio _audio;
 
-    private StreamResampler.IShortPacketResampler? _sourceResampler = null;
+    private IResamplerFunction<short[], short[]>? _sourceResampler = null;
 
-    private StreamResampler.IBytePacketResampler? _sinkResampler = null;
+    private IResamplerFunction<short[], short[]>? _sinkResampler = null;
 
     private bool _helloResponseReceived;
 
@@ -105,7 +112,7 @@ public class RTICAudioEndPoint : IAudioSource, IAudioSink, IDisposable
         _responseTimer.AutoReset = true;
 
         _serverAudioFormat = ConversationSessionConfig.AudioFormat;
-        _responseAudioLength = (int)_serverAudioFormat.BufferSizeFromMiliseconds(RESPONSE_AUDIO_INTERVAL);
+        _responseAudioLength = (int)_serverAudioFormat.BufferSizeFromMiliseconds(RESPONSE_AUDIO_INTERVAL) / 2;
     }
 
     public void Dispose()
@@ -158,8 +165,8 @@ public class RTICAudioEndPoint : IAudioSource, IAudioSink, IDisposable
 
     public void SetAudioSourceFormat(AudioFormat audioFormat)
     {
-        _sourceResampler = StreamResampler.NewShortPacketResampler(false, 0.0f, audioFormat.ClockRate, 24000);
-        _sinkResampler = StreamResampler.NewBytePacketResampler(false, 0.0f, 24000, audioFormat.ClockRate);
+        _sourceResampler = AudioFrameResampler.New_ShortFrame_Resampler(new AResamplerParams(false, 0.0f, audioFormat.ClockRate, 24000));
+        _sinkResampler = AudioFrameResampler.New_ShortFrame_Resampler(new AResamplerParams(false, 0.0f, 24000, audioFormat.ClockRate));
         _audioFormatManager.SetSelectedFormat(audioFormat);
     }
 
@@ -227,65 +234,81 @@ public class RTICAudioEndPoint : IAudioSource, IAudioSink, IDisposable
     /// <param name="e"></param>
     protected void OnAudioResponseTimer(Object? source, System.Timers.ElapsedEventArgs e)
     {
-        var speaker = _audio.Speaker;
-        if (speaker is not null && !speaker.IsClosed && _sinkResampler is not null)
+        if (Interlocked.CompareExchange(ref _timerLock, 1, 0) == 0)
         {
-            byte[]? resultArray = null;
-
-            int retryWatchdog = 0;
-            int totalBytesRead = 0;
-
-            // Trying to process exactly 'RESPONSE_AUDIO_INTERVAL' of bytes from source buffer each time.
-            while (totalBytesRead < _responseAudioLength)
+            var speaker = _audio.Speaker;
+            if (speaker is not null && !speaker.IsClosed && _sinkResampler is not null)
             {
-                if (speaker.GetBytesAvailable() > 0)
-                {
-                    byte[] buffer = new byte[_responseAudioLength];
-                    int bytesRead = speaker.GetInputStream().Read(buffer, 0, buffer.Length - totalBytesRead);
-                    if (bytesRead > 0)
-                    {
-                        if (!_isAudioSourcePaused)
-                        {
-                            short[]? outAudio = null;
-                            long outputSamples = _sinkResampler.ProcessToShort(false, buffer, bytesRead, ref outAudio);
+                byte[]? resultArray = null;
 
-                            if (outAudio is not null)
+                int retryWatchdog = 0;
+                int totalSamplesRead = 0;
+
+                // Trying to process exactly 'RESPONSE_AUDIO_INTERVAL' of bytes from source buffer each time.
+                while (totalSamplesRead < _responseAudioLength)
+                {
+                    if (speaker.StoredByteCount > 0)
+                    {
+                        short[] buffer = new short[_responseAudioLength];
+                        int samplesRead = speaker.GetBufferOutput().Read(buffer, 0, buffer.Length - totalSamplesRead);
+                        if (samplesRead > 0)
+                        {
+                            if (!_isAudioSourcePaused)
                             {
-                                Array.Resize(ref outAudio, (int)outputSamples);
-                                byte[] array = _audioEncoder.EncodeAudio(outAudio, _audioFormatManager.SelectedFormat);
-                                if (resultArray is not null)
+                                int expectedSize = (int)_sinkResampler.Params.GetExpectedOutputSize(samplesRead);
+                                short[] outAudio = new short[expectedSize];
+                                long outputSamples = _sinkResampler.Process(false, buffer, samplesRead, outAudio, expectedSize);
+
+                                if (outAudio is not null)
                                 {
-                                    resultArray = Combine(resultArray, array);
-                                }
-                                else
-                                {
-                                    resultArray = array;
+                                    Array.Resize(ref outAudio, (int)outputSamples);
+                                    byte[] array = _audioEncoder.EncodeAudio(outAudio, _audioFormatManager.SelectedFormat);
+                                    if (resultArray is not null)
+                                    {
+                                        resultArray = Combine(resultArray, array);
+                                    }
+                                    else
+                                    {
+                                        resultArray = array;
+                                    }
                                 }
                             }
+                            totalSamplesRead += samplesRead;
                         }
-                        totalBytesRead += bytesRead;
-                    }
-                }
-                else
-                {
-                    // This part should be useful at the begining of the response,
-                    // in cases when response arrives in small chunks of audio.
-                    if (retryWatchdog < 2)
-                    {
-                        retryWatchdog++;
-                        Thread.Sleep(50);
                     }
                     else
                     {
-                        break;
+                        // This part should be useful at the begining of the response,
+                        // in cases when response arrives in small chunks of audio.
+                        if (retryWatchdog < 2)
+                        {
+                            retryWatchdog++;
+                            Thread.Sleep(50);
+                        }
+                        else
+                        {
+                            break;
+                        }
                     }
+                }
+
+                if (!_isAudioSourcePaused && resultArray is not null)
+                {
+                    this.OnAudioSourceEncodedSample?.Invoke((uint)resultArray.Length, resultArray);
+#if DEBUG
+                    if ((float)totalSamplesRead < ((float)_responseAudioLength * 0.75f))
+                    {
+                        _logger.LogDebug("(RTICAudioEndPoint) Sent an incomplete chunk of audio.");
+                    }
+#endif
                 }
             }
 
-            if (!_isAudioSourcePaused && resultArray is not null)
-            {
-                this.OnAudioSourceEncodedSample?.Invoke((uint)resultArray.Length, resultArray);
-            }
+            _timerLock = 0;
+        }
+        else
+        {
+            _logger.LogDebug("(RTICAudioEndPoint) TIMER HANDLER STUCK.");
         }
     }
 
@@ -297,12 +320,23 @@ public class RTICAudioEndPoint : IAudioSource, IAudioSink, IDisposable
         var microphone = _audio.Microphone;
         if (!_isAudioSinkPaused && _audioEncoder != null && microphone is not null && !microphone.IsClosed && _sourceResampler is not null)
         {
-            short[] inAudio = _audioEncoder.DecodeAudio(encodedMediaFrame.EncodedAudio, _audioFormatManager.SelectedFormat);
-            byte[]? outAudio = null;
-            long outputSize = _sourceResampler.ProcessToByte(false, inAudio, inAudio.LongLength, ref outAudio);
-            if (outAudio is not null && outputSize > 0)
+            if (Interlocked.CompareExchange(ref _encodedMediaLock, 1, 0) == 0)
             {
-                microphone.GetOutputStream().Write(outAudio, 0, (int)outputSize);
+                short[] inAudio = _audioEncoder.DecodeAudio(encodedMediaFrame.EncodedAudio, _audioFormatManager.SelectedFormat);
+                long expectedSize = (int)_sourceResampler.Params.GetExpectedOutputSize(inAudio.LongLength);
+                short[] outAudio = new short[expectedSize];
+                long outputSize = _sourceResampler.Process(false, inAudio, inAudio.LongLength, outAudio, expectedSize);
+                Debug.Assert(outputSize <= expectedSize);
+                if (outAudio is not null && outputSize > 0)
+                {
+                    microphone.GetBufferInput().Write(outAudio, 0, (int)outputSize);
+                }
+
+                _encodedMediaLock = 0;
+            }
+            else
+            {
+                _logger.LogDebug("(RTICAudioEndPoint) ENCODED MEDIA STUCK.");
             }
         }
     }
@@ -421,16 +455,16 @@ public class RTICAudioEndPoint : IAudioSource, IAudioSink, IDisposable
                 if (!_helloResponseReceived)
                 {
                     _helloResponseReceived = true;
-                    LogDebug("(RTICAudioEndPoint) Total bytes buffered: " + speaker.GetBytesAvailable());
+                    LogDebug("(RTICAudioEndPoint) Total bytes buffered: " + speaker.StoredByteCount);
                 }
 
                 var buffer = update.Audio.ToArray();
-                speaker.GetOutputStream().Write(buffer);
+                speaker.GetStreamInput().Write(buffer);
             }
             else if (!_helloResponseReceived)
             {
                 var buffer = update.Audio.ToArray();
-                speaker?.GetOutputStream().Write(buffer);
+                speaker?.GetStreamInput().Write(buffer);
                 LogDebug("(RTICAudioEndPoint) Size added to buffer: " + buffer.Length);
             }
         }

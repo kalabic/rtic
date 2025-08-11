@@ -1,18 +1,19 @@
 ﻿using AudioFormatLib;
 using AudioFormatLib.Buffers;
+using AudioFormatLib.IO;
 using LibRTIC.BasicDevices;
 using LibRTIC.Conversation;
-using LibRTIC.MiniTaskLib.Model;
 using LibRTIC.MiniTaskLib;
+using LibRTIC.MiniTaskLib.Model;
 using MiniRTICallServer.RTISorcery.RTICallSessionConsole;
 
 namespace MiniRTICallServer.RTISorcery;
 
 public class RTICallAudio : RTIConsoleAudio
 {
-    public override IStreamBuffer? Speaker { get { return _responseBuffer; } }
+    public override IAudioBuffer? Speaker { get { return _responseBuffer; } }
 
-    public override IStreamBuffer? Microphone { get { return _speechInput; } }
+    public override IAudioBuffer? Microphone { get { return _speechInput; } }
 
     public override float Volume
     {
@@ -23,13 +24,18 @@ public class RTICallAudio : RTIConsoleAudio
 
     private AudioStreamBuffer _speechInput;
 
-    private CircularBufferStream _responseBuffer;
+    private AudioStreamBuffer _responseBuffer;
 
     public RTICallAudio(Info info, AFrameFormat audioFormat)
         : base(info, audioFormat, CancellationToken.None)
     {
-        _speechInput = new AudioStreamBuffer(audioFormat, 2, CancellationToken.None);
-        _responseBuffer = new CircularBufferStream((int)audioFormat.BufferSizeFromSeconds(60 * 5), CancellationToken.None);
+        ABufferParams speechBP = new ABufferParams(audioFormat);
+        speechBP.BufferSize = (int)audioFormat.BufferSizeFromSeconds(5);
+        _speechInput = new AudioStreamBuffer(speechBP);
+
+        ABufferParams responseBP = new ABufferParams(audioFormat);
+        responseBP.BufferSize = (int)audioFormat.BufferSizeFromSeconds(60 * 5);
+        _responseBuffer = new AudioStreamBuffer(responseBP, CancellationToken.None);
     }
 
     protected override void Dispose(bool disposing)

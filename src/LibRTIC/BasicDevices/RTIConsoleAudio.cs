@@ -1,5 +1,6 @@
 ﻿using AudioFormatLib;
 using AudioFormatLib.Buffers;
+using AudioFormatLib.IO;
 using LibRTIC.BasicDevices.RTIC;
 using LibRTIC.Conversation;
 using LibRTIC.MiniTaskLib.Base;
@@ -30,9 +31,9 @@ public abstract class RTIConsoleAudio : DisposableBase
 {
     private const int INPUT_AUDIO_WAIT_PERIOD = 500;
 
-    public abstract IStreamBuffer? Speaker { get; }
+    public abstract IAudioBuffer? Speaker { get; }
 
-    public abstract IStreamBuffer? Microphone { get; }
+    public abstract IAudioBuffer? Microphone { get; }
 
     public virtual float Volume { get; set; }
 
@@ -83,7 +84,7 @@ public abstract class RTIConsoleAudio : DisposableBase
 
         if (waitingMusic is not null && Speaker is not null)
         {
-            Speaker.GetOutputStream().Write(waitingMusic, 0, waitingMusic.Length);
+            Speaker.GetStreamInput().Write(waitingMusic, 0, waitingMusic.Length);
         }
         if (helloSample is not null)
         {
@@ -102,7 +103,7 @@ public abstract class RTIConsoleAudio : DisposableBase
         if (_state == RTIConsoleStateId.Answering && _helloSample is not null)
         {
             Microphone?.ClearBuffer();
-            Microphone?.GetOutputStream().Write(_helloSample, 0, _helloSample.Length);
+            Microphone?.GetStreamInput().Write(_helloSample, 0, _helloSample.Length);
             _helloSample = null;
 
             _timer = new();
@@ -158,7 +159,7 @@ public abstract class RTIConsoleAudio : DisposableBase
     {
         if (_state == RTIConsoleStateId.Answering && _silenceBuffer is not null)
         {
-            Microphone?.GetOutputStream().Write(_silenceBuffer, 0, _silenceBuffer.Length);
+            Microphone?.GetStreamInput().Write(_silenceBuffer, 0, _silenceBuffer.Length);
         }
     }
 }
