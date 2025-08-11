@@ -2,19 +2,17 @@
 using AudioFormatLib.Buffers;
 using NAudio.Wave;
 
-namespace LibRTIC.BasicDevices;
+namespace LibRTIC_Win.BasicDevices;
 
-public class SpeakerAudioStream : CircularBufferStream
+public class SpeakerAudioStream : AudioStreamBuffer
 {
-    private const int BUFFER_SECONDS = 60 * 5;
+    public const int BUFFER_SECONDS = 60 * 5;
 
-    private const int SUSPEND_UNTIL_ENQUED_LENGTHMS = 250;
-
-    private class WaveBufferProvider : IWaveProvider
+    private class WaveBufferProvider : IWaveProvider, IDisposable
     {
         private readonly WaveFormat waveFormat;
 
-        private Stream source;
+        private Stream? source;
 
         WaveFormat IWaveProvider.WaveFormat => waveFormat;
 
@@ -26,22 +24,31 @@ public class SpeakerAudioStream : CircularBufferStream
 
         public int Read(byte[] buffer, int offset, int count)
         {
-            int bytesRead = source.Read(buffer, offset, count);
-            if (bytesRead < count)
+            if (source is not null)
             {
-                Array.Fill<byte>(buffer, 0, bytesRead, count - bytesRead);
+                int bytesRead = source.Read(buffer, offset, count);
+                if (bytesRead < count)
+                {
+                    Array.Fill<byte>(buffer, 0, bytesRead, count - bytesRead);
+                }
+                return count;
             }
-            return count;
+
+            // Disposed
+            return 0;
+        }
+
+        public void Dispose()
+        {
+            source = null;
         }
     }
 
-    private WaveBufferProvider provider;
+    private WaveBufferProvider? provider;
 
     private WaveOutEvent waveOut;
 
     private readonly WaveFormat waveFormat;
-
-    private long _suspendUntilBuffered = 0;
 
     public float Volume
     {
@@ -49,74 +56,42 @@ public class SpeakerAudioStream : CircularBufferStream
         set { waveOut.Volume = value; }
     }
 
-    public SpeakerAudioStream(AFrameFormat audioFormat,
-                              CancellationToken speakerToken)
-        : base((int)audioFormat.BufferSizeFromSeconds(BUFFER_SECONDS), speakerToken)
+    public SpeakerAudioStream(ABufferParams bp, CancellationToken speakerToken)
+        : base(bp, speakerToken)
     {
         waveFormat = new
         (
-            rate: audioFormat.SampleRate,
-            bits: audioFormat.SampleFormat.Bits(),
-            channels: audioFormat.ChannelFormat.Count
+            rate: bp.Format.SampleRate,
+            bits: bp.Format.SampleFormat.Bits(),
+            channels: bp.Format.ChannelLayout.Count
         );
-        provider = new WaveBufferProvider(this, waveFormat);
+        provider = new WaveBufferProvider(GetStreamOutput(), waveFormat);
         waveOut = new WaveOutEvent();
         waveOut.Init(provider);
         waveOut.Play();
-
-        // May help with audio stuttering at the beginning of stream.
-        _suspendUntilBuffered = audioFormat.BufferSizeFromMiliseconds(SUSPEND_UNTIL_ENQUED_LENGTHMS);
     }
 
-    public SpeakerAudioStream(AFrameFormat audioFormat)
-        : this(audioFormat, CancellationToken.None)
+    public SpeakerAudioStream(ABufferParams bp)
+        : this(bp, CancellationToken.None)
     { }
 
     protected override void Dispose(bool disposing)
     {
-        // Release managed resources.
-        // if (disposing) { }
+        if (disposing) 
+        {
+            CloseBuffer();
+            waveOut.Dispose();
+        }
 
         // Release unmanaged resources.
-        waveOut.Dispose();
         base.Dispose(disposing);
     }
 
-    public override void Close()
+    public override void CloseBuffer()
     {
         waveOut.Stop();
-        base.Close();
-    }
-
-    public long GetBufferedMs()
-    {
-        long bytesBuffered = GetBufferedBytes();
-        long bytesPerSample = waveFormat.BitsPerSample / 8;
-        long samplesBuffered = bytesBuffered / (waveFormat.Channels * bytesPerSample);
-        long miliseconds = (samplesBuffered * 1000) / waveFormat.SampleRate;
-        return (miliseconds > 0) ? (miliseconds + 500) : 0;
-    }
-
-    public long GetMilisecondPosition()
-    {
-        long bytePosition = waveOut.GetPosition();
-        long bytesPerSample = waveFormat.BitsPerSample / 8;
-        long samplePosition = bytePosition / (waveFormat.Channels * bytesPerSample);
-        long milisecondPosition = (samplePosition * 1000) / waveFormat.SampleRate;
-        return milisecondPosition;
-    }
-
-    public override long Length { get => GetBufferedMs(); }
-
-    public override long Position { get => GetMilisecondPosition(); set => throw new NotImplementedException(); }
-
-    public override int Read(byte[] buffer, int offset, int count)
-    {
-        if (_suspendUntilBuffered <= _totalBytesWritten)
-        {
-            return base.Read(buffer, offset, count);
-        }
-
-        return 0;
+        provider?.Dispose();
+        provider = null;
+        base.CloseBuffer();
     }
 }

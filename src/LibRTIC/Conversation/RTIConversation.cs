@@ -1,4 +1,5 @@
 ﻿using AudioFormatLib.Buffers;
+using AudioFormatLib.IO;
 using LibRTIC.Config;
 using LibRTIC.MiniTaskLib;
 using LibRTIC.MiniTaskLib.Base;
@@ -33,9 +34,9 @@ public abstract class RTIConversation : TaskListBase
     /// </summary>
     public abstract EventQueue ConversationEvents { get; }
 
-    public abstract void ConfigureWith(RealtimeClient client, IStreamBuffer audioInputStream);
+    public abstract void ConfigureWith(RealtimeClient client, IAudioBuffer audioInputStream);
 
-    public abstract void ConfigureWith(ConversationOptions options, IStreamBuffer audioInputStream);
+    public abstract void ConfigureWith(ConversationOptions options, IAudioBuffer audioInputStream);
 
     public abstract void Run();
 

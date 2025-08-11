@@ -45,6 +45,9 @@ public class RTICmdLineState_Answering : RTIConsoleStateWithTimer
             case RTISessionEventId.ItemStarted:
                 return stateCollection.State_WritingItem;
 
+            case RTISessionEventId.SessionFinished:
+                return stateCollection.State_Inactive;
+
             default:
 #if DEBUG
                 COWriteLine("RTICallState_Answering: ignoring message: " + messageType.ToString());

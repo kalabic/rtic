@@ -1,9 +1,11 @@
-﻿using AudioFormatLib.Buffers;
+﻿using AudioFormatLib;
+using AudioFormatLib.Buffers;
+using AudioFormatLib.IO;
+using LibRTIC.Config;
 using LibRTIC.Conversation.UpdatesReceiver;
 using LibRTIC.MiniTaskLib;
 using LibRTIC.MiniTaskLib.Events;
 using LibRTIC.MiniTaskLib.Model;
-using LibRTIC.Config;
 using OpenAI.Realtime;
 using System.Net.WebSockets;
 using static LibRTIC.Conversation.FailedToConnect;
@@ -56,7 +58,7 @@ public class RTIConversationTask : RTIConversation
 
     private CancellationTokenSource? _audioCancellation = null;
 
-    private IStreamBuffer? _audioInputStream = null;
+    private IAudioBuffer? _audioInputStream = null;
 
     private AudioStreamBuffer? _internalAudioBuffer = null;
 
@@ -100,7 +102,7 @@ public class RTIConversationTask : RTIConversation
     /// </summary>
     /// <param name="client"></param>
     /// <param name="audioInputStream"></param>
-    public override void ConfigureWith(RealtimeClient client, IStreamBuffer audioInputStream)
+    public override void ConfigureWith(RealtimeClient client, IAudioBuffer audioInputStream)
     {
         throw new NotImplementedException();
     }
@@ -111,7 +113,7 @@ public class RTIConversationTask : RTIConversation
     /// </summary>
     /// <param name="options"></param>
     /// <param name="audioInputStream"></param>
-    public override void ConfigureWith(ConversationOptions options, IStreamBuffer audioInputStream)
+    public override void ConfigureWith(ConversationOptions options, IAudioBuffer audioInputStream)
     {
         this._options = options;
         this._audioInputStream = audioInputStream;
@@ -184,8 +186,7 @@ public class RTIConversationTask : RTIConversation
     public override void Cancel()
     {
         _startCanceller?.CancelAsync();
-        _audioInputStream?.Cancel();
-        _internalAudioBuffer?.Cancel();
+        _internalAudioBuffer?.CloseBuffer();
         _receiver.CancelMicrophone();
         _receiver.FinishReceiver();
     }
@@ -368,9 +369,11 @@ public class RTIConversationTask : RTIConversation
         //
         // An intermediate buffer between 'send audio' task and input audio source (microphone). TODO: Will be useful later.
         //
-        _internalAudioBuffer = new AudioStreamBuffer(
-            ConversationSessionConfig.AudioFormat, ConversationSessionConfig.AUDIO_INPUT_BUFFER_SECONDS, _audioCancellation.Token);
-        _internalAudioBuffer.SetWaitMinimumData(WAIT_MINIMUM_DATA_MS);
+        var format = new ABufferParams(ConversationSessionConfig.AudioFormat);
+        format.BufferSize = (int)format.Format.BufferSizeFromSeconds(ConversationSessionConfig.AUDIO_INPUT_BUFFER_SECONDS);
+        format.WaitForCompleteRead = true;
+        _internalAudioBuffer = new AudioStreamBuffer(format, _audioCancellation.Token);
+        // _internalAudioBuffer.SetWaitMinimumData(WAIT_MINIMUM_DATA_MS);
 
         //
         // A task that reads input audio from intermediate buffer and sends it to the server.
@@ -394,7 +397,7 @@ public class RTIConversationTask : RTIConversation
     {
         if ((_internalAudioBuffer is not null) && (_audioCancellation is not null))
         {
-            _receiver.SendInputAudio(_internalAudioBuffer, _audioCancellation.Token);
+            _receiver.SendInputAudio(_internalAudioBuffer.GetStreamOutput(), _audioCancellation.Token);
             _receiver.ClearInputAudio();
         }
     }
@@ -405,21 +408,22 @@ public class RTIConversationTask : RTIConversation
     private void InputAudioAction()
     {
         if (_internalAudioBuffer is not null &&
-            _internalAudioBuffer.CanWrite &&
-            _audioCancellation is not null &&
-            !_audioCancellation.IsCancellationRequested &&
-            _audioInputStream is not null &&
-            _audioInputStream.CanRead)
+            _audioCancellation is not null && !_audioCancellation.IsCancellationRequested &&
+            _audioInputStream is not null && _audioInputStream.GetStreamOutput().CanRead)
         {
             int bytesRead = -1;
-            byte[] buffer = new byte[AUDIO_INPUT_PACKET_MINIMUM];
+            byte[] buffer = new byte[AUDIO_INPUT_PACKET];
 
             // Try to read complete chunks of size 'AUDIO_INPUT_PACKET_MINIMUM'.
             while (!_audioCancellation.IsCancellationRequested && 
-                   (_internalAudioBuffer.GetBytesUnused() >= AUDIO_INPUT_PACKET_MINIMUM) &&
+                   (_internalAudioBuffer.AvailableSpace >= AUDIO_INPUT_PACKET) &&
                    bytesRead != 0)
             {
-                bytesRead = _audioInputStream.MovePacket(_internalAudioBuffer, buffer);
+                bytesRead = _audioInputStream.GetStreamOutput().Read(buffer, 0, AUDIO_INPUT_PACKET);
+                if (bytesRead > 0)
+                {
+                    _internalAudioBuffer.GetStreamInput().Write(buffer, 0, bytesRead);
+                }
             }
         }
     }

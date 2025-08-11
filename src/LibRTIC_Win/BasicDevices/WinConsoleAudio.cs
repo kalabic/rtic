@@ -1,5 +1,5 @@
 ﻿using AudioFormatLib;
-using AudioFormatLib.Buffers;
+using AudioFormatLib.IO;
 using LibRTIC.BasicDevices;
 using LibRTIC.MiniTaskLib.Model;
 
@@ -7,9 +7,9 @@ namespace LibRTIC_Win.BasicDevices;
 
 public class WinConsoleAudio : RTIConsoleAudio
 {
-    public override IStreamBuffer? Speaker { get { return _speaker; } }
+    public override IAudioBuffer? Speaker { get { return _speaker; } }
 
-    public override IStreamBuffer? Microphone { get { return _microphone; } }
+    public override IAudioBuffer? Microphone { get { return _microphone; } }
 
     public override float Volume
     {
@@ -48,8 +48,14 @@ public class WinConsoleAudio : RTIConsoleAudio
 
     public override void Start(byte[]? waitingMusic = null, byte[]? helloSample = null)
     {
-        _speaker = new SpeakerAudioStream(_audioFormat, _cancellation);
-        _microphone = new MicrophoneAudioStream(_audioFormat, _cancellation);
+        ABufferParams spkParams = new(_audioFormat);
+        spkParams.BufferSize = (int)_audioFormat.BufferSizeFromSeconds(SpeakerAudioStream.BUFFER_SECONDS);
+        _speaker = new SpeakerAudioStream(spkParams, _cancellation);
+
+        ABufferParams micParams = new(_audioFormat);
+        micParams.BufferSize = (int)_audioFormat.BufferSizeFromSeconds(5);
+        _microphone = MicrophoneAudioStream.Create(micParams, _cancellation);
+
         base.Start(waitingMusic, helloSample);
     }
 }
