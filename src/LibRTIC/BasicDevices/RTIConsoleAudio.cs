@@ -31,9 +31,15 @@ public abstract class RTIConsoleAudio : DisposableBase
 {
     private const int INPUT_AUDIO_WAIT_PERIOD = 500;
 
-    public abstract IAudioBuffer? Speaker { get; }
+    public abstract IAudioBufferInput? Speaker { get; }
 
-    public abstract IAudioBuffer? Microphone { get; }
+    /// <summary> Enable SIP server to forward responses to SIP client. </summary>
+    public virtual IAudioBufferOutput? SpeakerOutput { get { return null; } }
+
+    public abstract IAudioBufferOutput? Microphone { get; }
+
+    /// <summary> Enable sending recorded speech or silence. Enable SIP server to forward user speech from SIP client. </summary>
+    public virtual IAudioBufferInput? MicrophoneInput { get { return null; } }
 
     public virtual float Volume { get; set; }
 
@@ -84,7 +90,7 @@ public abstract class RTIConsoleAudio : DisposableBase
 
         if (waitingMusic is not null && Speaker is not null)
         {
-            Speaker.GetStreamInput().Write(waitingMusic, 0, waitingMusic.Length);
+            Speaker.Write(waitingMusic, 0, waitingMusic.Length);
         }
         if (helloSample is not null)
         {
@@ -102,8 +108,8 @@ public abstract class RTIConsoleAudio : DisposableBase
         _state = state;
         if (_state == RTIConsoleStateId.Answering && _helloSample is not null)
         {
-            Microphone?.ClearBuffer();
-            Microphone?.GetStreamInput().Write(_helloSample, 0, _helloSample.Length);
+            MicrophoneInput?.ClearBuffer();
+            MicrophoneInput?.Write(_helloSample, 0, _helloSample.Length);
             _helloSample = null;
 
             _timer = new();
@@ -159,7 +165,7 @@ public abstract class RTIConsoleAudio : DisposableBase
     {
         if (_state == RTIConsoleStateId.Answering && _silenceBuffer is not null)
         {
-            Microphone?.GetStreamInput().Write(_silenceBuffer, 0, _silenceBuffer.Length);
+            MicrophoneInput?.Write(_silenceBuffer, 0, _silenceBuffer.Length);
         }
     }
 }

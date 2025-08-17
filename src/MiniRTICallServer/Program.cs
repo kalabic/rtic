@@ -84,7 +84,9 @@ namespace MiniRTICallServer
             new SIPRegisterAccount( "user", "password", "sipsorcery.cloud", 120)
         };
 
+#pragma warning disable CS8618 // CS8618: Non-nullable field
         private static SIPTransport _sipTransport;
+#pragma warning restore CS8618 // CS8618: Non-nullable field
 
         /// <summary>
         /// Keeps track of the current active calls. It includes both received and placed calls.
@@ -96,7 +98,7 @@ namespace MiniRTICallServer
         /// </summary>
         private static ConcurrentDictionary<string, SIPRegistrationUserAgent> _registrations = new ConcurrentDictionary<string, SIPRegistrationUserAgent>();
 
-        private static string _publicIPAddress = null;
+        private static string? _publicIPAddress = null;
         private static int _rtpPort = 0;
 
         /// <summary>
@@ -166,7 +168,7 @@ namespace MiniRTICallServer
             {
                 // Ctrl-c will gracefully exit the call at any point.
                 ManualResetEvent exitMre = new ManualResetEvent(false);
-                Console.CancelKeyPress += delegate (object sender, ConsoleCancelEventArgs e)
+                Console.CancelKeyPress += delegate (object? sender, ConsoleCancelEventArgs e)
                 {
                     e.Cancel = true;
                     exitMre.Set();
@@ -276,8 +278,10 @@ namespace MiniRTICallServer
                             foreach (var call in _calls)
                             {
                                 int duration = Convert.ToInt32(DateTimeOffset.Now.Subtract(call.Value.Dialogue.Inserted).TotalSeconds);
+#pragma warning disable CS8602 // CS8602: Dereference of a possibly null reference.
                                 uint rtpSent = (call.Value.MediaSession as VoIPMediaSession).AudioRtcpSession.PacketsSentCount;
                                 uint rtpRecv = (call.Value.MediaSession as VoIPMediaSession).AudioRtcpSession.PacketsReceivedCount;
+#pragma warning restore CS8602 // CS8602: Dereference of a possibly null reference.
                                 Log.LogInformation($"{call.Key}: {call.Value.Dialogue.RemoteTarget} {duration}s {rtpSent}/{rtpRecv}");
                             }
                         }
@@ -372,7 +376,7 @@ namespace MiniRTICallServer
         /// <param name="dst">THe destination specified on an incoming call. Can be used to
         /// set the audio source.</param>
         /// <returns>A new RTP session object.</returns>
-        private static VoIPMediaSession CreateRtpSession(SIPUserAgent ua, string dst, int bindPort)
+        private static VoIPMediaSession CreateRtpSession(SIPUserAgent ua, string? dst, int bindPort)
         {
             List<AudioCodecsEnum> codecs = new List<AudioCodecsEnum> { AudioCodecsEnum.PCMU, AudioCodecsEnum.PCMA, AudioCodecsEnum.G722 };
 
@@ -402,7 +406,7 @@ namespace MiniRTICallServer
                     Log.LogWarning($"RTP timeout on incomplete call, closing RTP session.");
                 }
 
-                ua.Hangup();
+                ua?.Hangup();
             };
 
             return rtpAudioSession;
@@ -433,7 +437,7 @@ namespace MiniRTICallServer
                     Log.LogWarning($"RTP timeout on incomplete call, closing RTP session.");
                 }
 
-                ua.Hangup();
+                ua?.Hangup();
             };
             rtpAudioSession.OnStarted += () => 
             { 

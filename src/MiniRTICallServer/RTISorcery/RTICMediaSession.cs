@@ -53,9 +53,7 @@ public class RTICMediaSession : VoIPMediaSession
         _console = RTICallConsoleBuilder.New(Log, ua, uas, this);
 
         _conversation = RTIConversationTask.Create(_info, CancellationToken.None);
-#pragma warning disable CS8604 // Possible null reference argument for parameter.
         _conversation.ConfigureWith(_conversationOptions, audioEP.Microphone);
-#pragma warning restore CS8604 // Possible null reference argument for parameter.
 
         var cev = _conversation.ConversationEvents;
 

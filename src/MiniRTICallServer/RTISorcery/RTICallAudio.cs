@@ -11,9 +11,13 @@ namespace MiniRTICallServer.RTISorcery;
 
 public class RTICallAudio : RTIConsoleAudio
 {
-    public override IAudioBuffer? Speaker { get { return _responseBuffer; } }
+    public override IAudioBufferInput Speaker { get { return _responseBuffer.Input.Buffer; } }
 
-    public override IAudioBuffer? Microphone { get { return _speechInput; } }
+    public override IAudioBufferOutput SpeakerOutput { get { return _responseBuffer.Output.Buffer; } }
+
+    public override IAudioBufferOutput Microphone { get { return _speechInput.Output.Buffer; } }
+
+    public override IAudioBufferInput MicrophoneInput { get { return _speechInput.Input.Buffer; } }
 
     public override float Volume
     {

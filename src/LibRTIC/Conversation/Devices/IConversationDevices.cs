@@ -9,7 +9,7 @@ public interface IConversationDevices : IDisposable
 {
     public void ConnectingStarted();
 
-    public IAudioBuffer GetAudioInput();
+    public IAudioBufferOutput GetAudioOutput();
 
     public void ConnectReceiverEvents(EventCollection receiverEvents);
 

@@ -30,7 +30,9 @@ public partial class Program
 #if RUN_SYNC
     public static void Main(string[] args)
 #else
+#pragma warning disable CS1998 // CS1998: This async method lacks 'await' operators and will run synchronously.
     public static async Task Main(string[] args)
+#pragma warning restore CS1998 // CS1998: This async method lacks 'await' operators and will run synchronously.
 #endif
     {
         var exit = exitSource.Token;
@@ -210,7 +212,8 @@ public partial class Program
     {
         if (update.Audio is not null)
         {
-            AudioOutput?.Speaker?.GetStreamInput().Write(update.Audio);
+            var data = update.Audio.ToArray();
+            AudioOutput?.Speaker?.Write(data, 0, data.Length);
         }
         if (!String.IsNullOrEmpty(update.Transcript))
         {

@@ -35,7 +35,7 @@ public abstract class ConversationShell : IDisposable
         this._info = info;
         this._devices = devices;
         _updatesReceiverTask = RTIConversationTask.Create(info, cancellation);
-        _updatesReceiverTask.ConfigureWith(client, _devices.GetAudioInput());
+        _updatesReceiverTask.ConfigureWith(client, _devices.GetAudioOutput());
 
         ConnectDeviceEventHandlers();
         ConnectConversationUpdateHandlers();
@@ -49,7 +49,7 @@ public abstract class ConversationShell : IDisposable
         this._info = info;
         this._devices = devices;
         _updatesReceiverTask = RTIConversationTask.Create(info, cancellation);
-        _updatesReceiverTask.ConfigureWith(options, _devices.GetAudioInput());
+        _updatesReceiverTask.ConfigureWith(options, _devices.GetAudioOutput());
 
         ConnectDeviceEventHandlers();
         ConnectConversationUpdateHandlers();
