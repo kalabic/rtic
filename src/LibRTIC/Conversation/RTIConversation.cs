@@ -34,9 +34,9 @@ public abstract class RTIConversation : TaskListBase
     /// </summary>
     public abstract EventQueue ConversationEvents { get; }
 
-    public abstract void ConfigureWith(RealtimeClient client, IAudioBuffer audioInputStream);
+    public abstract void ConfigureWith(RealtimeClient client, IAudioBufferOutput audioOutputStream);
 
-    public abstract void ConfigureWith(ConversationOptions options, IAudioBuffer audioInputStream);
+    public abstract void ConfigureWith(ConversationOptions options, IAudioBufferOutput audioOutputStream);
 
     public abstract void Run();
 

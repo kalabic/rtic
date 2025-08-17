@@ -7,9 +7,11 @@ namespace LibRTIC_Win.BasicDevices;
 
 public class WinConsoleAudio : RTIConsoleAudio
 {
-    public override IAudioBuffer? Speaker { get { return _speaker; } }
+    public override IAudioBufferInput? Speaker { get { return _speaker?.Input.Buffer; } }
 
-    public override IAudioBuffer? Microphone { get { return _microphone; } }
+    public override IAudioBufferOutput? Microphone { get { return _microphone?.Output.Buffer; } }
+
+    public override IAudioBufferInput? MicrophoneInput { get { return _microphone?.Input.Buffer; } }
 
     public override float Volume
     {

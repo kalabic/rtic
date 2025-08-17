@@ -29,7 +29,7 @@ public class MicrophoneAudioStream : AudioStreamBuffer
         };
         handleDataAvailable = (_, e) =>
         {
-            GetStreamInput().Write(e.Buffer, 0, e.BytesRecorded);
+            Input.Stream.Write(e.Buffer, 0, e.BytesRecorded);
         };
         _waveInEvent.DataAvailable += handleDataAvailable;
         _waveInEvent.StartRecording();

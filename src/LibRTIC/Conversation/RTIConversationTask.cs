@@ -58,7 +58,7 @@ public class RTIConversationTask : RTIConversation
 
     private CancellationTokenSource? _audioCancellation = null;
 
-    private IAudioBuffer? _audioInputStream = null;
+    private IAudioBufferOutput? _audioOutputStream = null;
 
     private AudioStreamBuffer? _internalAudioBuffer = null;
 
@@ -102,7 +102,7 @@ public class RTIConversationTask : RTIConversation
     /// </summary>
     /// <param name="client"></param>
     /// <param name="audioInputStream"></param>
-    public override void ConfigureWith(RealtimeClient client, IAudioBuffer audioInputStream)
+    public override void ConfigureWith(RealtimeClient client, IAudioBufferOutput audioOutputStream)
     {
         throw new NotImplementedException();
     }
@@ -113,10 +113,10 @@ public class RTIConversationTask : RTIConversation
     /// </summary>
     /// <param name="options"></param>
     /// <param name="audioInputStream"></param>
-    public override void ConfigureWith(ConversationOptions options, IAudioBuffer audioInputStream)
+    public override void ConfigureWith(ConversationOptions options, IAudioBufferOutput audioOutputStream)
     {
         this._options = options;
-        this._audioInputStream = audioInputStream;
+        this._audioOutputStream = audioOutputStream;
     }
 
     protected override void Dispose(bool disposing)
@@ -124,8 +124,8 @@ public class RTIConversationTask : RTIConversation
         if (disposing)
         {
             _startCanceller?.Dispose();
-            _audioInputStream?.Dispose();
-            _audioInputStream = null;
+            //_audioOutputStream?.Dispose();
+            _audioOutputStream = null;
             _internalAudioBuffer?.Dispose();
             _internalAudioBuffer = null;
             _receiver.Dispose();
@@ -391,7 +391,7 @@ public class RTIConversationTask : RTIConversation
     {
         if ((_internalAudioBuffer is not null) && (_audioCancellation is not null))
         {
-            _receiver.SendInputAudio(_internalAudioBuffer.GetStreamOutput(), _audioCancellation.Token);
+            _receiver.SendInputAudio(_internalAudioBuffer.Output.Stream, _audioCancellation.Token);
             _receiver.ClearInputAudio();
         }
     }
@@ -401,9 +401,8 @@ public class RTIConversationTask : RTIConversation
     /// </summary>
     private void InputAudioAction()
     {
-        if (_internalAudioBuffer is not null &&
-            _audioCancellation is not null && !_audioCancellation.IsCancellationRequested &&
-            _audioInputStream is not null && _audioInputStream.GetStreamOutput().CanRead)
+        if (_internalAudioBuffer is not null && _audioOutputStream is not null &&
+            _audioCancellation is not null && !_audioCancellation.IsCancellationRequested)
         {
             int bytesRead = -1;
             byte[] buffer = new byte[AUDIO_INPUT_PACKET];
@@ -413,10 +412,10 @@ public class RTIConversationTask : RTIConversation
                    (_internalAudioBuffer.AvailableSpace >= AUDIO_INPUT_PACKET) &&
                    bytesRead != 0)
             {
-                bytesRead = _audioInputStream.GetStreamOutput().Read(buffer, 0, AUDIO_INPUT_PACKET);
+                bytesRead = _audioOutputStream.Read(buffer, 0, AUDIO_INPUT_PACKET);
                 if (bytesRead > 0)
                 {
-                    _internalAudioBuffer.GetStreamInput().Write(buffer, 0, bytesRead);
+                    _internalAudioBuffer.Input.Stream.Write(buffer, 0, bytesRead);
                 }
             }
         }
