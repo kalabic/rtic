@@ -174,13 +174,13 @@ public class RTICAudioEndPoint : IAudioSource, IAudioSink, IDisposable
     {
         _sourceResampler = AudioResampler.Create(new()
         {
-            InputSampleRate = audioFormat.ClockRate,
-            OutputSampleRate = 24000
+            Input = new AFrameFormat(ASampleFormat.S16, audioFormat.ClockRate, 1),
+            Output = new AFrameFormat(ASampleFormat.S16, 24000, 1),
         });
         _sinkResampler = AudioResampler.Create(new()
         {
-            InputSampleRate = 24000,
-            OutputSampleRate = audioFormat.ClockRate
+            Input = new AFrameFormat(ASampleFormat.S16, 24000, 1),
+            Output = new AFrameFormat(ASampleFormat.S16, audioFormat.ClockRate, 1),
         });
         _audioFormatManager.SetSelectedFormat(audioFormat);
     }
@@ -272,19 +272,15 @@ public class RTICAudioEndPoint : IAudioSource, IAudioSink, IDisposable
                         {
                             if (!_isAudioSourcePaused)
                             {
-                                int expectedSize = (int)_sinkResampler.Params.GetExpectedOutputSize(samplesRead);
-                                short[] outAudio = new short[expectedSize];
-                                long outputSamples = _sinkResampler.Process(buffer, 0, samplesRead, outAudio, 0, expectedSize, false);
-
-                                if (outAudio is not null)
+                                short[] outAudio = _sinkResampler.Process(buffer, 0, samplesRead);
+                                if (outAudio.Length > 0)
                                 {
-                                    Array.Resize(ref outAudio, (int)outputSamples);
                                     byte[] array = _audioEncoder.EncodeAudio(outAudio, _audioFormatManager.SelectedFormat);
                                     if (resultArray is not null)
                                     {
                                         resultArray = Combine(resultArray, array);
 #if DEBUG
-                                        _logger.LogDebug($"(RTICAudioEndPoint) Running 'Timer' loop more than once. Adding: {outputSamples}");
+                                        _logger.LogDebug($"(RTICAudioEndPoint) Running 'Timer' loop more than once. Adding: {outAudio.Length}");
 #endif
                                     }
                                     else
@@ -337,12 +333,10 @@ public class RTICAudioEndPoint : IAudioSource, IAudioSink, IDisposable
             if (Interlocked.CompareExchange(ref _encodedMediaLock, 1, 0) == 0)
             {
                 short[] inAudio = _audioEncoder.DecodeAudio(encodedMediaFrame.EncodedAudio, _audioFormatManager.SelectedFormat);
-                long expectedSize = (int)_sourceResampler.Params.GetExpectedOutputSize(inAudio.LongLength);
-                short[] outAudio = new short[expectedSize];
-                long outputSize = _sourceResampler.Process(inAudio, 0, inAudio.LongLength, outAudio, 0, expectedSize, false);
-                if (outputSize > 0)
+                var outAudio = _sourceResampler.Process(inAudio);
+                if (outAudio.Length > 0)
                 {
-                    microphone.Write(outAudio, 0, (int)outputSize);
+                    microphone.Write(outAudio, 0, outAudio.Length);
                 }
 
                 _encodedMediaLock = 0;
