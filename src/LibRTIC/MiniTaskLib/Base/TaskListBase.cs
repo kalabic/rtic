@@ -1,4 +1,5 @@
-﻿using LibRTIC.MiniTaskLib.Model;
+﻿using DotBase.Core;
+using LibRTIC.MiniTaskLib.Model;
 
 namespace LibRTIC.MiniTaskLib.Base;
 

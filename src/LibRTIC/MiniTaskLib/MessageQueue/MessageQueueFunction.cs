@@ -1,4 +1,5 @@
-﻿using LibRTIC.MiniTaskLib.Base;
+﻿using DotBase.Core;
+using LibRTIC.MiniTaskLib.Base;
 using LibRTIC.MiniTaskLib.Model;
 
 namespace LibRTIC.MiniTaskLib.MessageQueue;

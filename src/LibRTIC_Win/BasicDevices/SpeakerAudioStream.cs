@@ -46,7 +46,7 @@ public class SpeakerAudioStream : AudioStreamBuffer
 
     private WaveBufferProvider? provider;
 
-    private WaveOutEvent waveOut;
+    private WasapiOut waveOut;
 
     private readonly WaveFormat waveFormat;
 
@@ -66,7 +66,7 @@ public class SpeakerAudioStream : AudioStreamBuffer
             channels: bp.Format.ChannelLayout.Count
         );
         provider = new WaveBufferProvider(Output.Stream, waveFormat);
-        waveOut = new WaveOutEvent();
+        waveOut = new WasapiOut();
         waveOut.Init(provider);
         waveOut.Play();
     }
