@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using DotBase.Core;
+using System.Collections.Concurrent;
 
 namespace LibRTIC.MiniTaskLib.Base;
 
@@ -14,7 +15,6 @@ class Scheduler : DisposableBase
         {
             lock (_lock)
             {
-                IsDisposed = true;
                 foreach (var task in _scheduledTasks.Values )
                 {
                     task.Dispose();

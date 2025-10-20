@@ -360,12 +360,10 @@ namespace MiniRTICallServer
         {
             Log.LogDebug($" >>> TaskWithEvents.UNDISPOSED_COUNT: {TaskWithEvents.UNDISPOSED_COUNT}");
             Log.LogDebug($" >>> TaskWithEvents.INSTANCE_COUNT: {TaskWithEvents.INSTANCE_COUNT}");
-            Log.LogDebug($" >>> EventForwarder.UNDISPOSED_COUNT: {EventForwarderBase.UNDISPOSED_COUNT}");
-            Log.LogDebug($" >>> EventForwarder.INSTANCE_COUNT: {EventForwarderBase.INSTANCE_COUNT}");
+            Log.LogDebug($" >>> MEventForwarder.UNDISPOSED_COUNT: {EventForwarderBase.UNDISPOSED_COUNT}");
+            Log.LogDebug($" >>> MEventForwarder.INSTANCE_COUNT: {EventForwarderBase.INSTANCE_COUNT}");
             Log.LogDebug($" >>> EventCollection.UNDISPOSED_COUNT: {EventCollection.UNDISPOSED_COUNT}");
             Log.LogDebug($" >>> EventCollection.INSTANCE_COUNT: {EventCollection.INSTANCE_COUNT}");
-            Log.LogDebug($" >>> EventConnection.UNDISPOSED_COUNT: {EventConnectionInstance.UNDISPOSED_COUNT}");
-            Log.LogDebug($" >>> EventConnection.INSTANCE_COUNT: {EventConnectionInstance.INSTANCE_COUNT}");
         }
 #endif
 

@@ -1,4 +1,6 @@
-﻿namespace LibRTIC.MiniTaskLib.Base;
+﻿using DotBase.Core;
+
+namespace LibRTIC.MiniTaskLib.Base;
 
 class ScheduledTask : DisposableBase
 {
