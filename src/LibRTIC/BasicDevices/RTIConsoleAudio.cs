@@ -56,6 +56,7 @@ public abstract class RTIConsoleAudio : DisposableBase
 
     private byte[] _silenceBuffer;
 
+    private float _normalVolume = 0.0f;
 
     public RTIConsoleAudio(Info info,
                            AFrameFormat audioFormat,
@@ -132,7 +133,8 @@ public abstract class RTIConsoleAudio : DisposableBase
     /// <param name="update"></param>
     public void HandleEvent(object? s, ConversationInputSpeechStarted update)
     {
-        Volume = 0.3f;
+        _normalVolume = Volume;
+        Volume = 0.3f * _normalVolume;
     }
 
     /// <summary>
@@ -142,7 +144,7 @@ public abstract class RTIConsoleAudio : DisposableBase
     /// <param name="update"></param>
     public void HandleEvent(object? s, ConversationInputSpeechFinished update)
     {
-        Volume = 1.0f;
+        Volume = _normalVolume;
     }
 
     /// <summary>

@@ -296,7 +296,7 @@ public class RTIConversationTask : RTIConversation
         RealtimeSession? session = null;
         try
         {
-            session = _client.StartConversationSession(_options._client.AOAIDeployment, _startCanceller.Token);
+            session = _client.StartConversationSession(_options._client.AOAIDeployment, null, _startCanceller.Token);
             var options = ConversationSessionConfig.GetDefaultConversationSessionOptions();
             session.ConfigureSession(options, _startCanceller.Token);
         }
