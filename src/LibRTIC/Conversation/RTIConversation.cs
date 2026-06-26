@@ -129,10 +129,15 @@ public interface ConversationItemStreamingFinished
     public string ItemId { get; }
 }
 
-public interface ConversationItemStreamingPartDelta 
+public interface ConversationItemStreamingAudioPartDelta 
 {
     public BinaryData Audio { get; }
 
+    public string ItemId { get; }
+}
+
+public interface ConversationItemStreamingTranscriptionPartDelta
+{
     public string ItemId { get; }
 
     public string Transcript { get; }

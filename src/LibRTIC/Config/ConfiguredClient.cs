@@ -3,10 +3,12 @@ using Azure.Identity;
 using OpenAI.Realtime;
 using OpenAI;
 using System.ClientModel;
+using System.ClientModel.Primitives;
 using LibRTIC.MiniTaskLib.Model;
 
 namespace LibRTIC.Config;
 
+#pragma warning disable OPENAI001
 #pragma warning disable OPENAI002
 
 public class ConfiguredClient
@@ -49,13 +51,30 @@ public class ConfiguredClient
 
     private static RealtimeClient ForAzureOpenAIWithKey(string aoaiEndpoint, string aoaiApiKey)
     {
-        AzureOpenAIClient aoaiClient = new(new Uri(aoaiEndpoint), new ApiKeyCredential(aoaiApiKey));
-        return aoaiClient.GetRealtimeClient();
+        ApiKeyAuthenticationPolicy authenticationPolicy =
+            ApiKeyAuthenticationPolicy.CreateHeaderApiKeyPolicy(
+                new ApiKeyCredential(aoaiApiKey), "api-key", string.Empty);
+
+        return new RealtimeClient(authenticationPolicy, new RealtimeClientOptions()
+        {
+            Endpoint = GetAzureOpenAIV1Endpoint(aoaiEndpoint),
+        });
     }
 
     private static RealtimeClient ForOpenAIWithKey(string oaiApiKey)
     {
         OpenAIClient aoaiClient = new(new ApiKeyCredential(oaiApiKey));
         return aoaiClient.GetRealtimeClient();
+    }
+
+    private static Uri GetAzureOpenAIV1Endpoint(string aoaiEndpoint)
+    {
+        string endpoint = aoaiEndpoint.TrimEnd('/');
+        if (!endpoint.EndsWith("/openai/v1", StringComparison.OrdinalIgnoreCase))
+        {
+            endpoint += "/openai/v1";
+        }
+
+        return new Uri(endpoint + "/");
     }
 }
