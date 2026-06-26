@@ -25,7 +25,7 @@ public class ConversationUpdatesReceiver : ConversationUpdatesDispatcher
 
     protected ConversationCancellation _cancellation;
 
-    protected RealtimeSession? _session = null;
+    protected RealtimeSessionClient? _session = null;
 
 
     public ConversationUpdatesReceiver(Info info)
@@ -54,7 +54,7 @@ public class ConversationUpdatesReceiver : ConversationUpdatesDispatcher
         base.Dispose(disposing);
     }
 
-    public void SetSession(RealtimeSession session)
+    public void SetSession(RealtimeSessionClient session)
     {
         this._session = session;
     }
@@ -90,7 +90,7 @@ public class ConversationUpdatesReceiver : ConversationUpdatesDispatcher
     {
         HandleSessionExceptions(() =>
         {
-            _session?.InterruptResponseAsync();
+            _session?.CancelResponseAsync();
         });
     }
 
@@ -101,7 +101,7 @@ public class ConversationUpdatesReceiver : ConversationUpdatesDispatcher
             _sessionState.receiverState = ConversationReceiverState.FinishAfterResponse;
             HandleSessionExceptions(() =>
             {
-                _session?.InterruptResponseAsync();
+                _session?.CancelResponseAsync();
             });
         }
     }
@@ -113,7 +113,7 @@ public class ConversationUpdatesReceiver : ConversationUpdatesDispatcher
             if (_session is not null)
             {
                 _sessionState.receiverState = ConversationReceiverState.Connected;
-                await foreach (RealtimeUpdate update in _session.ReceiveUpdatesAsync(_cancellation.WebSocketToken))
+                await foreach (RealtimeServerUpdate update in _session.ReceiveUpdatesAsync(_cancellation.WebSocketToken))
                 {
                     if (!DispatchAndProcess(update))
                     {
@@ -135,7 +135,7 @@ public class ConversationUpdatesReceiver : ConversationUpdatesDispatcher
         {
             if (_session is not null)
             {
-                await foreach (RealtimeUpdate update in _session.ReceiveUpdatesAsync(_cancellation.WebSocketToken))
+                await foreach (RealtimeServerUpdate update in _session.ReceiveUpdatesAsync(_cancellation.WebSocketToken))
                 {
                     if (!DispatchAndProcess(update))
                     {
@@ -148,7 +148,7 @@ public class ConversationUpdatesReceiver : ConversationUpdatesDispatcher
         InvokeEvent(new ConversationSessionFinished());
     }
 
-    private bool DispatchAndProcess(RealtimeUpdate update)
+    private bool DispatchAndProcess(RealtimeServerUpdate update)
     {
         DispatchUpdate(update);
 

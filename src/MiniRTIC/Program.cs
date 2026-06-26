@@ -80,7 +80,8 @@ public partial class Program
         cev.Connect<ConversationResponseFinished>( HandleEvent );
         cev.Connect<ConversationInputTranscriptionFinished>( HandleEvent );
         cev.Connect<ConversationInputTranscriptionFailed>( HandleEvent );
-        cev.Connect<ConversationItemStreamingPartDelta>( HandleEvent );
+        cev.Connect<ConversationItemStreamingAudioPartDelta>(HandleEvent);
+        cev.Connect<ConversationItemStreamingTranscriptionPartDelta>(HandleEvent);
 
         var conversationTask = conversation.RunAsync();
 
@@ -208,13 +209,22 @@ public partial class Program
     /// </summary>
     /// <param name="s"></param>
     /// <param name="update"></param>
-    private static void HandleEvent(object? s, ConversationItemStreamingPartDelta update)
+    private static void HandleEvent(object? s, ConversationItemStreamingAudioPartDelta update)
     {
         if (update.Audio is not null)
         {
             var data = update.Audio.ToArray();
             AudioOutput?.Speaker?.Write(data, 0, data.Length);
         }
+    }
+
+    /// <summary>
+    /// This update brings text and audio from AI agent.
+    /// </summary>
+    /// <param name="s"></param>
+    /// <param name="update"></param>
+    private static void HandleEvent(object? s, ConversationItemStreamingTranscriptionPartDelta update)
+    {
         if (!String.IsNullOrEmpty(update.Transcript))
         {
             Output.Write(RTMessageType.Agent, update.Transcript);

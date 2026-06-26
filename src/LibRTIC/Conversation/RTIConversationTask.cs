@@ -290,12 +290,14 @@ public class RTIConversationTask : RTIConversation
             return;
         }
 
-        RealtimeSession? session = null;
+        RealtimeSessionClient? session = null;
         try
         {
-            session = _client.StartConversationSession(_options._client.AOAIDeployment, null, _startCanceller.Token);
+            var sessionClientOptions = GetRealtimeSessionClientOptions(_options._client);
+            session = _client.StartConversationSession(
+                _options._client.AOAIDeployment, sessionClientOptions, _startCanceller.Token);
             var options = ConversationSessionConfig.GetDefaultConversationSessionOptions();
-            session.ConfigureSession(options, _startCanceller.Token);
+            session.ConfigureConversationSession(options, _startCanceller.Token);
         }
         catch (OperationCanceledException ex)
         {
@@ -334,6 +336,18 @@ public class RTIConversationTask : RTIConversation
         _receiver.ReceiverEvents.Connect<ConversationSessionConfigured>(StartAudioInputTask);
 
         _receiver.ReceiveUpdates(networkTaskCancellation);
+    }
+
+    private static RealtimeSessionClientOptions? GetRealtimeSessionClientOptions(ClientApiConfig clientOptions)
+    {
+        if (clientOptions.Type != EndpointType.AzureOpenAIWithKey)
+        {
+            return null;
+        }
+
+        RealtimeSessionClientOptions sessionClientOptions = new();
+        sessionClientOptions.Headers.Add("api-key", clientOptions.AOAIApiKey);
+        return sessionClientOptions;
     }
 
     /// <summary>

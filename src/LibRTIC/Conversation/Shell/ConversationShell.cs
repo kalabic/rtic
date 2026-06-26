@@ -104,7 +104,8 @@ public abstract class ConversationShell : IDisposable
         conversationEvents.Connect<ConversationInputSpeechFinished>(false, HandleEvent );
         conversationEvents.Connect<ConversationItemStreamingStarted>(false, HandleEvent );
         conversationEvents.Connect<ConversationItemStreamingFinished>(false, HandleEvent );
-        conversationEvents.Connect<ConversationItemStreamingPartDelta>(false, HandleEvent );
+        conversationEvents.Connect<ConversationItemStreamingAudioPartDelta>(false, HandleEvent);
+        conversationEvents.Connect<ConversationItemStreamingTranscriptionPartDelta>(false, HandleEvent);
     }
 
     protected void HandleEvent(object? sender, PlaybackPositionReachedUpdate update)
@@ -135,7 +136,7 @@ public abstract class ConversationShell : IDisposable
         }
     }
 
-    protected void HandleEvent(object? sender, ConversationItemStreamingPartDelta update)
+    protected void HandleEvent(object? sender, ConversationItemStreamingAudioPartDelta update)
     {
         if (_streamItemMap.ContainsKey(update.ItemId))
         {
@@ -145,6 +146,16 @@ public abstract class ConversationShell : IDisposable
                 _devices.EnqueueForPlayback(item.Attrib, update.Audio);
             }
         }
+    }
+
+    protected void HandleEvent(object? sender, ConversationItemStreamingTranscriptionPartDelta update)
+    {
+#if DEBUG
+        if (!_streamItemMap.ContainsKey(update.ItemId))
+        {
+            throw new InvalidOperationException("Not nice");
+        }
+#endif
     }
 
     /// <summary>

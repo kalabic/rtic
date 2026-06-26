@@ -137,7 +137,7 @@ public class RTICAudioEndPoint : IAudioSource, IAudioSink, IDisposable
         conversationEvents.Connect<ConversationInputSpeechFinished>(HandleEvent);
         conversationEvents.Connect<ConversationInputTranscriptionFinished>(HandleEvent);
         conversationEvents.Connect<ConversationInputTranscriptionFailed>(HandleEvent);
-        conversationEvents.Connect<ConversationItemStreamingPartDelta>(HandleEvent);
+        conversationEvents.Connect<ConversationItemStreamingAudioPartDelta>(HandleEvent);
         _audio.ConnectToConversation(conversationEvents, callConsole);
     }
 
@@ -443,7 +443,7 @@ public class RTICAudioEndPoint : IAudioSource, IAudioSink, IDisposable
     /// </summary>
     /// <param name="s"></param>
     /// <param name="update"></param>
-    private void HandleEvent(object? s, ConversationItemStreamingPartDelta update)
+    private void HandleEvent(object? s, ConversationItemStreamingAudioPartDelta update)
     {
         if (update.Audio is not null)
         {
