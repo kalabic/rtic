@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="src/LibRTIC/LibRTIC.csproj" />
+  <Project Path="src/LibRTIC_Win/LibRTIC_Win.csproj" />
+  <Project Path="src/MiniRTIC/MiniRTIC.csproj" />
+  <Project Path="src/MiniRTICallServer/MiniRTICallServer.csproj" />
+</Solution>
