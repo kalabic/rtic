@@ -45,7 +45,7 @@ public partial class Program
         }
 
         // Read client API options from environment variables and nothing else.
-        var config = ConversationOptions.FromEnvironment();
+        var config = RTICConfig.FromEnvironment();
         if (config._client is null)
         {
             Output.Info.Error("Failed to read client API options from environment.");

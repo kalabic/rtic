@@ -64,7 +64,7 @@ public class RTIConversationTask : RTIConversation
 
     private RealtimeClient? _client = null;
 
-    private ConversationOptions? _options = null;
+    private RTICConfig? _options = null;
 
     private ConversationUpdatesReceiver _receiver;
 
@@ -108,12 +108,12 @@ public class RTIConversationTask : RTIConversation
     }
 
     /// <summary>
-    /// WIP, 'ConversationOptions' not used properly. Session options always loaded from
+    /// WIP, 'RTICConfig' not used properly. Session options always loaded from
     /// <see cref="ConversationSessionConfig.GetDefaultConversationSessionOptions"/>.
     /// </summary>
     /// <param name="options"></param>
     /// <param name="audioInputStream"></param>
-    public override void ConfigureWith(ConversationOptions options, IAudioBufferOutput audioOutputStream)
+    public override void ConfigureWith(RTICConfig options, IAudioBufferOutput audioOutputStream)
     {
         this._options = options;
         this._audioOutputStream = audioOutputStream;

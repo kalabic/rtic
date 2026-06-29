@@ -36,7 +36,7 @@ public abstract class RTIConversation : TaskListBase
 
     public abstract void ConfigureWith(RealtimeClient client, IAudioBufferOutput audioOutputStream);
 
-    public abstract void ConfigureWith(ConversationOptions options, IAudioBufferOutput audioOutputStream);
+    public abstract void ConfigureWith(RTICConfig options, IAudioBufferOutput audioOutputStream);
 
     public abstract void Run();
 

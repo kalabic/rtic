@@ -43,7 +43,7 @@ public abstract class ConversationShell : IDisposable
 
     protected ConversationShell(Info info,
                                 IConversationDevices devices,
-                                ConversationOptions options,
+                                RTICConfig options,
                                 CancellationToken cancellation)
     {
         this._info = info;
