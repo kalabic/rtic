@@ -13,7 +13,7 @@ namespace LibRTIC.Config;
 
 public class ConfiguredClient
 {
-    public const string DEFAULT_CONVERSATIONAPI_FILENAME = "realtime_api.conf";
+    public const string DEFAULT_API_FILENAME = "rtic_api.json";
 
     public static RealtimeClient? FromOptions(Info info, ClientApiConfig options)
     {
@@ -37,7 +37,7 @@ public class ConfiguredClient
         }
 
         info.Error(
-                    $"Incomplete or missing '" + DEFAULT_CONVERSATIONAPI_FILENAME + "' or environment configuration.Please provide one of:\n"
+                    $"Incomplete or missing '" + DEFAULT_API_FILENAME + "' or environment configuration. Please provide one of:\n"
                     + " - AZURE_OPENAI_ENDPOINT with AZURE_OPENAI_USE_ENTRA=true or AZURE_OPENAI_API_KEY\n"
                     + " - OPENAI_API_KEY");
         return null;

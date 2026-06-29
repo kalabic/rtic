@@ -12,7 +12,7 @@ namespace MiniRTICallServer.RTISorcery;
 
 public class RTICMediaSession : VoIPMediaSession
 {
-    public static RTICMediaSession New(SIPUserAgent ua, SIPServerUserAgent uas, ConversationOptions? conversationOptions)
+    public static RTICMediaSession New(SIPUserAgent ua, SIPServerUserAgent uas, RTICConfig? conversationOptions)
     {
         RTICAudioEndPoint audioEP = new RTICAudioEndPoint();
         return new RTICMediaSession(ua, uas, conversationOptions, audioEP);
@@ -30,7 +30,7 @@ public class RTICMediaSession : VoIPMediaSession
 
     private bool _helloResponseReceived = false;
 
-    private ConversationOptions _conversationOptions;
+    private RTICConfig _conversationOptions;
 
     private RTIConversation? _conversation = null;
 
@@ -38,7 +38,7 @@ public class RTICMediaSession : VoIPMediaSession
 
     private RTICAudioEndPoint? _audioEP = null;
 
-    public RTICMediaSession(SIPUserAgent ua, SIPServerUserAgent uas, ConversationOptions? co, RTICAudioEndPoint audioEP)
+    public RTICMediaSession(SIPUserAgent ua, SIPServerUserAgent uas, RTICConfig? co, RTICAudioEndPoint audioEP)
         : base(audioEP.ToMediaEndPoints())
     {
         Log = LogFactory.CreateLogger<RTICMediaSession>();
@@ -48,7 +48,7 @@ public class RTICMediaSession : VoIPMediaSession
         _serverUserAgent = uas;
         _audioEP = audioEP;
 
-        _conversationOptions = (co is not null) ? co : ConversationOptions.FromEnvironment();
+        _conversationOptions = (co is not null) ? co : RTICConfig.FromEnvironment();
 
         _console = RTICallConsoleBuilder.New(Log, ua, uas, this);
 

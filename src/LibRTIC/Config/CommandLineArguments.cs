@@ -2,7 +2,7 @@
 
 public class CommandLineArguments
 {
-    public FileInfo? apiFile = null;
+    public FileInfo? apiConfigFile = null;
     public bool multiSession = false;
-    public FileInfo? sessionFile = null;
+    public FileInfo? sessionConfigFile = null;
 }

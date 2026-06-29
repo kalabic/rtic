@@ -417,7 +417,7 @@ namespace MiniRTICallServer
         /// <param name="dst">THe destination specified on an incoming call. Can be used to
         /// set the audio source.</param>
         /// <returns>A new RTP session object.</returns>
-        private static VoIPMediaSession CreateRTICRtpSession(ConversationOptions? conversationOptions, SIPUserAgent ua, SIPServerUserAgent uas)
+        private static VoIPMediaSession CreateRTICRtpSession(RTICConfig? conversationOptions, SIPUserAgent ua, SIPServerUserAgent uas)
         {
             var rtpAudioSession = RTICMediaSession.New(ua, uas, conversationOptions);
             rtpAudioSession.AcceptRtpFromAny = true;

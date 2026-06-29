@@ -14,7 +14,7 @@ public class ValueParser
             return 0;
         }
 
-        if ((paramNode is not null) && (paramNode.GetValueKind() == JsonValueKind.Array))
+        if (paramNode.GetValueKind() == JsonValueKind.Array)
         {
             return 1;
         }
@@ -31,7 +31,7 @@ public class ValueParser
             return 0;
         }
 
-        if ((paramNode is not null) && (paramNode.GetValueKind() == JsonValueKind.Object))
+        if (paramNode.GetValueKind() == JsonValueKind.Object)
         {
             return 1;
         }
@@ -48,7 +48,7 @@ public class ValueParser
             return 0;
         }
 
-        if ((paramNode is not null) && (paramNode.GetValueKind() == JsonValueKind.String))
+        if (paramNode.GetValueKind() == JsonValueKind.String)
         {
             return 1;
         }
@@ -85,7 +85,7 @@ public class ValueParser
             return 0;
         }
 
-        if ((paramNode is not null) && ((paramNode.GetValueKind() == JsonValueKind.False) || (paramNode.GetValueKind() == JsonValueKind.True)))
+        if ((paramNode.GetValueKind() == JsonValueKind.False) || (paramNode.GetValueKind() == JsonValueKind.True))
         {
             return 1;
         }
@@ -118,7 +118,7 @@ public class ValueParser
             return 0;
         }
 
-        if ((paramNode is not null) && (paramNode.GetValueKind() == JsonValueKind.Number))
+        if (paramNode.GetValueKind() == JsonValueKind.Number)
         {
             return 1;
         }
