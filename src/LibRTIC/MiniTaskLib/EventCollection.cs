@@ -1,4 +1,3 @@
-using LibRTIC.MiniTaskLib.Base;
 using DotBase.Log;
 using LibRTIC.MiniTaskLib.Model;
 using System.Collections.ObjectModel;
@@ -210,20 +209,7 @@ public class EventCollection : IDisposable
         }
     }
 
-    public EventForwarder<TMessage>? NewEventForwarder<TMessage>(IQueueWriter<IProcessMessage> destinationQueue)
-    {
-        var item = GetEventContainer<TMessage>();
-        if (item is not null)
-        {
-            return new EventForwarder<TMessage>(_info, destinationQueue, item);
-        }
-        else
-        {
-            return null;
-        }
-    }
-
-    public EventContainer<TMessage>? ForwardFrom<TMessage>(EventCollection otherCollection, IQueueWriter<IProcessMessage> destinationQueue)
+    public EventContainer<TMessage>? ForwardFrom<TMessage>(EventCollection otherCollection, IEventMailboxWriter destinationMailbox)
     {
         if (!Exists<TMessage>())
         {
@@ -235,10 +221,18 @@ public class EventCollection : IDisposable
             otherCollection.EnableInvokeFor<TMessage>();
         }
 
-        var forwarder = NewEventForwarder<TMessage>(destinationQueue);
-        if (forwarder is not null)
+        var item = GetEventContainer<TMessage>();
+        if (item is not null)
         {
-            return otherCollection.Connect<TMessage>(forwarder);
+            EventHandler<TMessage> forwarder = (_, message) =>
+            {
+                if (!destinationMailbox.IsWriterComplete)
+                {
+                    destinationMailbox.Post(() => item.Invoke(null, message));
+                }
+            };
+
+            return otherCollection.ConnectForwarder<TMessage>(forwarder);
         }
 
         return null;
@@ -350,7 +344,7 @@ public class EventCollection : IDisposable
         }
     }
 
-    public EventContainer<TMessage> Connect<TMessage>(EventForwarder<TMessage> forwarder)
+    private EventContainer<TMessage> ConnectForwarder<TMessage>(EventHandler<TMessage> forwarder)
     {
         lock (_lock)
         {
@@ -371,7 +365,7 @@ public class EventCollection : IDisposable
             else if (items.Count() == 1)
             {
                 var item = items.First();
-                ConnectEventForwarder(item, forwarder);
+                ConnectMailboxForwarder(item, forwarder);
                 return item;
             }
             else
@@ -393,11 +387,10 @@ public class EventCollection : IDisposable
         _eventConnections.Add(new EventHandlerConnection<TMessage>(item, eventHandler));
     }
 
-    private void ConnectEventForwarder<TMessage>(EventContainer<TMessage> item, EventForwarder<TMessage> eventForwarder)
+    private void ConnectMailboxForwarder<TMessage>(EventContainer<TMessage> item, EventHandler<TMessage> eventForwarder)
     {
-        item.ConnectEventHandler(eventForwarder.WriteToEventQueue);
-        _eventConnections.Add(new EventHandlerConnection<TMessage>(item, eventForwarder.WriteToEventQueue));
-        _eventConnections.Add(eventForwarder);
+        item.ConnectEventHandler(eventForwarder);
+        _eventConnections.Add(new EventHandlerConnection<TMessage>(item, eventForwarder));
     }
 
     private void ConnectEventHandler<TMessage>(EventContainer<TMessage> item, EventContainer<TMessage> eventHandler)

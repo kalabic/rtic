@@ -94,7 +94,7 @@ public class RTIConversationTask : RTIConversation
         // Connect event handlers.
         receiverQueue.Connect<InputAudioTaskFinished>(HandleEvent);
         receiverQueue.Connect<FailedToConnect>(HandleEvent);
-        receiverQueue.Connect<MessageQueueStarted>(HandleEvent);
+        receiverQueue.Connect<EventMailboxStarted>(HandleEvent);
     }
 
     /// <summary>
@@ -500,9 +500,9 @@ public class RTIConversationTask : RTIConversation
     }
 
     /// <summary>
-    /// Entry for <see cref="MessageQueueStarted"/> event notification.
+    /// Entry for <see cref="EventMailboxStarted"/> event notification.
     /// </summary>
-    private void HandleEvent(object? sender, MessageQueueStarted update)
+    private void HandleEvent(object? sender, EventMailboxStarted update)
     {
         StartNetworkConnectionTask();
     }
@@ -514,7 +514,7 @@ public class RTIConversationTask : RTIConversation
     {
         _receiver.FinishReceiver(); // This should start graceful shutdown.
         InternalCancelStopDisposeAll();
-        _receiver.CloseMessageQueue(); // The end.
+        _receiver.CloseMailbox(); // The end.
     }
 
     /// <summary>
@@ -523,7 +523,7 @@ public class RTIConversationTask : RTIConversation
     private void HandleEvent(object? sender, FailedToConnect update)
     {
         InternalCancelStopDisposeAll();
-        _receiver.CloseMessageQueue(); // The end.
+        _receiver.CloseMailbox(); // The end.
     }
     
     public void HandleEvent(object? sender, TaskExceptionOccured update)

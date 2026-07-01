@@ -1,4 +1,3 @@
-using LibRTIC.MiniTaskLib.Base;
 using DotBase.Log;
 using LibRTIC.MiniTaskLib.Model;
 
@@ -6,12 +5,12 @@ namespace LibRTIC.MiniTaskLib;
 
 public class EventQueue : EventCollection
 {
-    private IQueueWriter<IProcessMessage>? _destinationQueue = null;
+    private IEventMailboxWriter? _destinationMailbox = null;
 
-    public EventQueue(InfoLog info, string label, IQueueWriter<IProcessMessage> destinationQueue)
+    public EventQueue(InfoLog info, string label, IEventMailboxWriter destinationMailbox)
          : base(info, label)
     {
-        _destinationQueue = destinationQueue;
+        _destinationMailbox = destinationMailbox;
     }
 
     protected override void Dispose(bool disposing)
@@ -19,11 +18,11 @@ public class EventQueue : EventCollection
         // Release managed resources.
         if (disposing)
         {
-            _destinationQueue = null;
+            _destinationMailbox = null;
         }
         else
         {
-            if (_destinationQueue is not null)
+            if (_destinationMailbox is not null)
             {
                 throw new InvalidOperationException("Not disposed properly.");
             }
@@ -35,9 +34,9 @@ public class EventQueue : EventCollection
 
     public EventContainer<TMessage>? ForwardFrom<TMessage>(EventCollection otherCollection)
     {
-        if (_destinationQueue is not  null)
+        if (_destinationMailbox is not  null)
         {
-            return ForwardFrom<TMessage>(otherCollection, _destinationQueue);
+            return ForwardFrom<TMessage>(otherCollection, _destinationMailbox);
         }
 
         return null;

@@ -29,7 +29,6 @@ using SIPSorcery.SIP.App;
 using SIPSorcery.Sys;
 using SIPSorceryMedia.Abstractions;
 using LibRTIC.MiniTaskLib;
-using LibRTIC.MiniTaskLib.Base;
 
 namespace MiniRTICallServer
 {
@@ -360,8 +359,6 @@ namespace MiniRTICallServer
         {
             Log.LogDebug($" >>> TaskWithEvents.UNDISPOSED_COUNT: {TaskWithEvents.UNDISPOSED_COUNT}");
             Log.LogDebug($" >>> TaskWithEvents.INSTANCE_COUNT: {TaskWithEvents.INSTANCE_COUNT}");
-            Log.LogDebug($" >>> MEventForwarder.UNDISPOSED_COUNT: {EventForwarderBase.UNDISPOSED_COUNT}");
-            Log.LogDebug($" >>> MEventForwarder.INSTANCE_COUNT: {EventForwarderBase.INSTANCE_COUNT}");
             Log.LogDebug($" >>> EventCollection.UNDISPOSED_COUNT: {EventCollection.UNDISPOSED_COUNT}");
             Log.LogDebug($" >>> EventCollection.INSTANCE_COUNT: {EventCollection.INSTANCE_COUNT}");
         }

@@ -9,10 +9,10 @@ namespace LibRTIC.Conversation.UpdatesReceiver;
 
 
 /// <summary>
-/// This class starts additional task to invoke 'forwarded event handlers' that do not
-/// hang on network updates fetcher task when it invokes event with an update.
+/// This class starts a mailbox to invoke forwarded event handlers without keeping
+/// them on the network updates fetcher task that produced the update.
 /// </summary>
-public abstract class ConversationUpdatesDispatcher : ForwardedEventQueue
+public abstract class ConversationUpdatesDispatcher : EventMailbox
 {
     protected ConversationUpdatesInfo _sessionState = new();
 

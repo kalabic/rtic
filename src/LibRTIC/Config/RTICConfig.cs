@@ -254,7 +254,7 @@ public class RTICConfig
         }
         catch (Exception ex)
         {
-            info.Error($" * - Tools : EXCEPTION WHILE PARSING {filePath}, ForwarderMessage: {ex.Message}");
+            info.Error($" * - Tools : EXCEPTION WHILE PARSING {filePath}, {ex.Message}");
         }
 
         return null;
