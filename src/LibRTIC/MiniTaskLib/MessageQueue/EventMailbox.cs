@@ -9,6 +9,8 @@ namespace LibRTIC.MiniTaskLib.MessageQueue;
 
 public class EventMailbox : DisposableBase, IEventMailboxWriter
 {
+    public bool IsComplete { get { return IsWriterComplete; } }
+
     public bool IsWriterComplete { get { return _writerComplete; } }
 
     public EventQueue Events { get { return _forwardedEvents; } }
@@ -38,8 +40,8 @@ public class EventMailbox : DisposableBase, IEventMailboxWriter
     public EventMailbox(InfoLog info)
     {
         _info = info;
-        _forwardedEvents = new(_info, "EventMailbox Forwarded Events", this);
-        _events = new(info, "EventMailbox Events");
+        _forwardedEvents = new("EventMailbox Forwarded Events", this);
+        _events = new("EventMailbox Events");
 
         EnableInvokeFor<TaskExceptionOccured>();
         EnableInvokeFor<EventMailboxStarted>();

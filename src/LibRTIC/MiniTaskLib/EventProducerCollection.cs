@@ -1,15 +1,12 @@
+using DotBase.Core;
 using DotBase.Event;
-using DotBase.Log;
-using LibRTIC.MiniTaskLib.Model;
-using System.Collections.ObjectModel;
 
 namespace LibRTIC.MiniTaskLib;
 
 /// <summary>
-/// All events in _collection are defined by C# generics. They need to be enabled first using
-/// <see cref="EnableInvokeFor"/> before <see cref="Invoke"/> of an event handler will work.
+/// Stores one event producer per message type and manages typed event invocation, subscription, and forwarding.
 /// </summary>
-public class EventProducerCollection : IDisposable
+public class EventProducerCollection : DisposableBase
 {
 #if DEBUG_UNDISPOSED
     public static int UNDISPOSED_COUNT = 0;
@@ -19,21 +16,21 @@ public class EventProducerCollection : IDisposable
     private bool _disposed = false;
 #endif
 
-    public string Label = "";
+    public string Label { get; set; } = "";
 
-    public bool IsComplete { get { return _complete; } }
+    public bool IsComplete { get { return _complete || IsDisposed; } }
 
-    private object _lock = new object();
+    private readonly object _lock = new object();
 
     private bool _complete = false;
 
-    private Collection<IDisposable> _eventConnections = new();
+    private readonly List<IDisposable> _eventConnections = new();
 
-    private Collection<IEventContainerInstance> _collection = new();
+    private readonly List<IEventContainerInstance> _collection = new();
 
-    public EventProducerCollection(InfoLog info, string label)
+    public EventProducerCollection(string label = "")
     {
-        this.Label = label;
+        Label = label;
 #if DEBUG_UNDISPOSED
         Interlocked.Increment(ref UNDISPOSED_COUNT);
         Interlocked.Increment(ref INSTANCE_COUNT);
@@ -48,12 +45,7 @@ public class EventProducerCollection : IDisposable
     }
 #endif
 
-    public void Dispose()
-    {
-        Dispose(true);
-    }
-
-    protected virtual void Dispose(bool disposing)
+    protected override void Dispose(bool disposing)
     {
 #if DEBUG_UNDISPOSED
         if (!_disposed && !disposing)
@@ -67,24 +59,34 @@ public class EventProducerCollection : IDisposable
         }
 #endif
 
-        // Release managed resources.
         if (disposing)
         {
             Clear();
         }
-        // Release unmanaged resources.
+
+        base.Dispose(disposing);
     }
 
     public virtual void Clear()
     {
         lock (_lock)
         {
+            if (_complete)
+            {
+                return;
+            }
+
             _complete = true;
             foreach (IDisposable connection in _eventConnections)
             {
                 connection.Dispose();
             }
             _eventConnections.Clear();
+
+            foreach (IEventContainerInstance item in _collection)
+            {
+                item.Dispose();
+            }
             _collection.Clear();
         }
     }
@@ -98,7 +100,7 @@ public class EventProducerCollection : IDisposable
     {
         lock (_lock)
         {
-            if (_complete)
+            if (IsComplete)
             {
 #if DEBUG
                 throw new ArgumentException("Access forbidden into completed EventProducerCollection.");
@@ -129,7 +131,7 @@ public class EventProducerCollection : IDisposable
     {
         lock (_lock)
         {
-            if (_complete)
+            if (IsComplete)
             {
 #if DEBUG
                 throw new ArgumentException("Access forbidden into completed EventProducerCollection.");
@@ -153,7 +155,7 @@ public class EventProducerCollection : IDisposable
     {
         lock (_lock)
         {
-            if (_complete)
+            if (IsComplete)
             {
 #if DEBUG
                 throw new ArgumentException("Access forbidden into completed EventProducerCollection.");
@@ -180,7 +182,7 @@ public class EventProducerCollection : IDisposable
         }
     }
 
-    public EventContainer<TMessage>? ForwardFrom<TMessage>(EventProducerCollection sourceEvents, IEventMailboxWriter destinationMailbox)
+    public EventContainer<TMessage>? ForwardFrom<TMessage>(EventProducerCollection sourceEvents, IActionDispatcher dispatcher)
     {
         if (!Exists<TMessage>())
         {
@@ -197,9 +199,9 @@ public class EventProducerCollection : IDisposable
         {
             EventHandler<TMessage> forwarder = (_, message) =>
             {
-                if (!destinationMailbox.IsWriterComplete)
+                if (!dispatcher.IsComplete)
                 {
-                    destinationMailbox.Post(() => item.Invoke(null, message));
+                    dispatcher.Post(() => item.Invoke(null, message));
                 }
             };
 
@@ -218,7 +220,7 @@ public class EventProducerCollection : IDisposable
     {
         lock (_lock)
         {
-            if (_complete)
+            if (IsComplete)
             {
 #if DEBUG
                 throw new ArgumentException("Access forbidden into completed EventProducerCollection.");
@@ -263,7 +265,7 @@ public class EventProducerCollection : IDisposable
     {
         lock (_lock)
         {
-            if (_complete)
+            if (IsComplete)
             {
 #if DEBUG
                 throw new ArgumentException("Access forbidden into completed EventProducerCollection.");
@@ -299,11 +301,11 @@ public class EventProducerCollection : IDisposable
         }
     }
 
-    private EventContainer<TMessage> ConnectForwarder<TMessage>(EventHandler<TMessage> forwarder)
+    private EventContainer<TMessage>? ConnectForwarder<TMessage>(EventHandler<TMessage> forwarder)
     {
         lock (_lock)
         {
-            if (_complete)
+            if (IsComplete)
             {
 #if DEBUG
                 throw new ArgumentException("Access forbidden into completed EventProducerCollection.");

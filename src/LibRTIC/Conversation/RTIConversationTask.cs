@@ -78,7 +78,7 @@ public class RTIConversationTask : RTIConversation
     {
         this._info = info;
         this._startCanceller = new CancellationTokenSource();
-        this._receiverTaskEvents = new EventProducerCollection(info, "ConversationUpdatesReceiverTask Events");
+        this._receiverTaskEvents = new EventProducerCollection("ConversationUpdatesReceiverTask Events");
         this._cancellation = cancellation;
         this._receiver = new ConversationUpdatesReceiver(info);
 

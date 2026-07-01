@@ -1,10 +1,13 @@
+using LibRTIC.MiniTaskLib;
+
 namespace LibRTIC.MiniTaskLib.Model;
 
-public interface IEventMailboxWriter
+/// <summary>
+/// Writes actions to an event mailbox and can complete the mailbox after a final action.
+/// </summary>
+public interface IEventMailboxWriter : IActionDispatcher
 {
     public bool IsWriterComplete { get; }
-
-    public bool Post(Action action);
 
     public bool PostFinal(Action action);
 }

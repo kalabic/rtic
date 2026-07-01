@@ -53,7 +53,7 @@ public abstract class TaskWithEvents : TaskBase
 
         _info = info;
         _cancellationTokenSource = cancellation;
-        _taskEvents = new(info, "TaskWithEvents Events");
+        _taskEvents = new("TaskWithEvents Events");
         _taskEvents.EnableInvokeFor<TaskExceptionOccured>();
         _taskEvents.EnableInvokeFor<TaskCancelled>();
         _taskEvents.EnableInvokeFor<TaskCompleted>();

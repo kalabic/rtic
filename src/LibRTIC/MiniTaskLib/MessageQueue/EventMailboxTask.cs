@@ -5,6 +5,8 @@ namespace LibRTIC.MiniTaskLib.MessageQueue;
 
 public class EventMailboxTask : TaskWithEvents, IEventMailboxWriter
 {
+    public bool IsComplete { get { return IsWriterComplete; } }
+
     public bool IsWriterComplete { get { return _mailbox.IsWriterComplete; } }
 
     public EventMailbox Mailbox { get { return _mailbox; } }
