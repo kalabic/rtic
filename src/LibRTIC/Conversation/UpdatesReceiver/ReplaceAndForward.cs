@@ -1,4 +1,5 @@
-﻿using LibRTIC.MiniTaskLib;
+﻿using DotBase.Event;
+using LibRTIC.MiniTaskLib;
 
 namespace LibRTIC.Conversation.UpdatesReceiver;
 

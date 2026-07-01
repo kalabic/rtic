@@ -1,3 +1,4 @@
+using DotBase.Event;
 using DotBase.Log;
 using LibRTIC.MiniTaskLib.Model;
 using System.Collections.ObjectModel;
@@ -24,17 +25,14 @@ public class EventCollection : IDisposable
 
     private object _lock = new object();
 
-    private InfoLog _info;
-
     private bool _complete = false;
 
     private Collection<IDisposable> _eventConnections = new();
 
-    private Collection<IEventContainer> _collection = new();
+    private Collection<IEventContainerInstance> _collection = new();
 
     public EventCollection(InfoLog info, string label)
     {
-        this._info = info;
         this.Label = label;
 #if DEBUG_UNDISPOSED
         Interlocked.Increment(ref UNDISPOSED_COUNT);
@@ -112,7 +110,7 @@ public class EventCollection : IDisposable
             var items = _collection.OfType<EventContainer<TMessage>>();
             if (items.Count() == 0)
             {
-                var item = new EventContainer<TMessage>(_info);
+                var item = new EventContainer<TMessage>();
                 _collection.Add(item);
                 return item;
             }
@@ -303,9 +301,6 @@ public class EventCollection : IDisposable
 
     public void ConnectAsync<TMessage>(bool assertEventExists, EventHandler<TMessage> eventHandler)
     {
-        var asyncEventHandler = new EventHandler<TMessage>(
-            (sender, message) =>  Task.Run(() => eventHandler.Invoke(sender, message)));
-
         lock (_lock)
         {
             if (_complete)
@@ -324,7 +319,7 @@ public class EventCollection : IDisposable
             }
             else if (items.Count() == 1)
             {
-                ConnectEventHandlerAsync(items.First(), asyncEventHandler);
+                ConnectEventHandlerAsync(items.First(), eventHandler);
             }
             else
             {
@@ -337,7 +332,7 @@ public class EventCollection : IDisposable
                     var item = EnableInvokeFor<TMessage>();
                     if (item is not null)
                     {
-                        ConnectEventHandlerAsync(item, asyncEventHandler);
+                        ConnectEventHandlerAsync(item, eventHandler);
                     }
                 }
             }
@@ -377,25 +372,25 @@ public class EventCollection : IDisposable
 
     private void ConnectEventHandlerAsync<TMessage>(EventContainer<TMessage> item, EventHandler<TMessage> eventHandler)
     {
-        item.ConnectEventHandlerAsync(eventHandler);
+        item.AddHandlerAsync(eventHandler);
         _eventConnections.Add(new EventAsyncConnection<TMessage>(item, eventHandler));
     }
 
     private void ConnectEventHandler<TMessage>(EventContainer<TMessage> item, EventHandler<TMessage> eventHandler)
     {
-        item.ConnectEventHandler(eventHandler);
+        item.AddHandler(eventHandler);
         _eventConnections.Add(new EventHandlerConnection<TMessage>(item, eventHandler));
     }
 
     private void ConnectMailboxForwarder<TMessage>(EventContainer<TMessage> item, EventHandler<TMessage> eventForwarder)
     {
-        item.ConnectEventHandler(eventForwarder);
+        item.AddHandler(eventForwarder);
         _eventConnections.Add(new EventHandlerConnection<TMessage>(item, eventForwarder));
     }
 
     private void ConnectEventHandler<TMessage>(EventContainer<TMessage> item, EventContainer<TMessage> eventHandler)
     {
-        item.ConnectEventHandler(eventHandler);
+        item.SendTo(eventHandler);
         _eventConnections.Add(new EventContainerConnection<TMessage>(item, eventHandler));
     }
 }

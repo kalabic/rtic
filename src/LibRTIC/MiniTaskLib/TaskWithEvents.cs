@@ -237,12 +237,19 @@ public abstract class TaskWithEvents : TaskBase
 
     private void InvokeTaskEvent<TMessage>(TMessage message)
     {
-        lock (_lock)
+        try
         {
-            if (!_taskEvents.IsComplete)
+            lock (_lock)
             {
-                _taskEvents.Invoke<TMessage>(message);
+                if (!_taskEvents.IsComplete)
+                {
+                    _taskEvents.Invoke<TMessage>(message);
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            _info.Warning("Exception while invoking task event handlers.", ex);
         }
     }
 

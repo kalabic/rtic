@@ -88,12 +88,19 @@ public class EventMailbox : DisposableBase, IEventMailboxWriter
 
     protected void InvokeEvent<TMessage>(TMessage message)
     {
-        lock (_eventLock)
+        try
         {
-            if (!_events.IsComplete)
+            lock (_eventLock)
             {
-                _events.Invoke(message);
+                if (!_events.IsComplete)
+                {
+                    _events.Invoke(message);
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            _info.Warning("Exception while invoking mailbox event handlers.", ex);
         }
     }
 

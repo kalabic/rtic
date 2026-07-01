@@ -1,4 +1,6 @@
-﻿namespace LibRTIC.MiniTaskLib;
+﻿using DotBase.Event;
+
+namespace LibRTIC.MiniTaskLib;
 
 public abstract class EventConnectionInstance : IDisposable
 {
@@ -77,7 +79,7 @@ public class EventHandlerConnection<TMessage> : EventConnection<TMessage>
 
     protected override void Disconnect()
     {
-        _item?.DisconnectEventHandler(_otherHandler);
+        _item?.RemoveHandler(_otherHandler);
     }
 }
 
@@ -93,7 +95,7 @@ public class EventAsyncConnection<TMessage> : EventConnection<TMessage>
 
     protected override void Disconnect()
     {
-        _item?.DisconnectEventHandlerAsync(_otherHandler);
+        _item?.RemoveHandlerAsync(_otherHandler);
     }
 }
 
@@ -109,6 +111,6 @@ public class EventContainerConnection<TMessage> : EventConnection<TMessage>
 
     protected override void Disconnect()
     {
-        _item?.DisconnectEventHandler(_otherContainer);
+        _item?.Disconnect(_otherContainer);
     }
 }

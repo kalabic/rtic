@@ -490,12 +490,19 @@ public class RTIConversationTask : RTIConversation
 
     private void InvokeReceiverTaskEvent<TMessage>(TMessage message)
     {
-        lock (_lockRTE)
+        try
         {
-            if (!_receiverTaskEvents.IsComplete)
+            lock (_lockRTE)
             {
-                _receiverTaskEvents.Invoke(message);
+                if (!_receiverTaskEvents.IsComplete)
+                {
+                    _receiverTaskEvents.Invoke(message);
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            _info.Warning("Exception while invoking receiver task event handlers.", ex);
         }
     }
 
