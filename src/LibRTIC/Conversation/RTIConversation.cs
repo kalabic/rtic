@@ -18,7 +18,7 @@ public abstract class RTIConversation : TaskListBase
     ///   <item><see cref="FailedToConnect"></item>
     /// </list>
     /// </summary>
-    public abstract EventCollection ReceiverEvents { get; }
+    public abstract EventProducerCollection ReceiverEvents { get; }
 
     /// <summary>
     /// Conversation related events.

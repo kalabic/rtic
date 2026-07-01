@@ -359,8 +359,8 @@ namespace MiniRTICallServer
         {
             Log.LogDebug($" >>> TaskWithEvents.UNDISPOSED_COUNT: {TaskWithEvents.UNDISPOSED_COUNT}");
             Log.LogDebug($" >>> TaskWithEvents.INSTANCE_COUNT: {TaskWithEvents.INSTANCE_COUNT}");
-            Log.LogDebug($" >>> EventCollection.UNDISPOSED_COUNT: {EventCollection.UNDISPOSED_COUNT}");
-            Log.LogDebug($" >>> EventCollection.INSTANCE_COUNT: {EventCollection.INSTANCE_COUNT}");
+            Log.LogDebug($" >>> EventProducerCollection.UNDISPOSED_COUNT: {EventProducerCollection.UNDISPOSED_COUNT}");
+            Log.LogDebug($" >>> EventProducerCollection.INSTANCE_COUNT: {EventProducerCollection.INSTANCE_COUNT}");
         }
 #endif
 

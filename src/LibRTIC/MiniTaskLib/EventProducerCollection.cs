@@ -9,7 +9,7 @@ namespace LibRTIC.MiniTaskLib;
 /// All events in _collection are defined by C# generics. They need to be enabled first using
 /// <see cref="EnableInvokeFor"/> before <see cref="Invoke"/> of an event handler will work.
 /// </summary>
-public class EventCollection : IDisposable
+public class EventProducerCollection : IDisposable
 {
 #if DEBUG_UNDISPOSED
     public static int UNDISPOSED_COUNT = 0;
@@ -31,7 +31,7 @@ public class EventCollection : IDisposable
 
     private Collection<IEventContainerInstance> _collection = new();
 
-    public EventCollection(InfoLog info, string label)
+    public EventProducerCollection(InfoLog info, string label)
     {
         this.Label = label;
 #if DEBUG_UNDISPOSED
@@ -41,7 +41,7 @@ public class EventCollection : IDisposable
     }
 
 #if DEBUG_UNDISPOSED
-    ~EventCollection()
+    ~EventProducerCollection()
     {
         Dispose(false);
         Interlocked.Decrement(ref INSTANCE_COUNT);
@@ -101,7 +101,7 @@ public class EventCollection : IDisposable
             if (_complete)
             {
 #if DEBUG
-                throw new ArgumentException("Access forbidden into completed EventCollection.");
+                throw new ArgumentException("Access forbidden into completed EventProducerCollection.");
 #else
                 return null;
 #endif
@@ -116,32 +116,11 @@ public class EventCollection : IDisposable
             }
             else if (assureIsNewEvent)
             {
-                throw new ArgumentException("Attempted to add pre-existing event type into EventSourceCollection.");
+                throw new ArgumentException("Attempted to add pre-existing event type into EventProducerCollection.");
             }
             else
             {
                 return items.First();
-            }
-        }
-    }
-
-    public void MakeCompatible(EventCollection other)
-    {
-        foreach (var otherItem in other._collection)
-        {
-            bool exists = false;
-            foreach (var item in _collection)
-            {
-                if (item.GetType() == otherItem.GetType())
-                {
-                    exists = true;
-                    break;
-                }
-            }
-
-            if (!exists)
-            {
-                _collection.Add(otherItem.NewCompatibleInstance());
             }
         }
     }
@@ -153,7 +132,7 @@ public class EventCollection : IDisposable
             if (_complete)
             {
 #if DEBUG
-                throw new ArgumentException("Access forbidden into completed EventCollection.");
+                throw new ArgumentException("Access forbidden into completed EventProducerCollection.");
 #else
                 return false;
 #endif
@@ -170,12 +149,6 @@ public class EventCollection : IDisposable
         item?.Invoke(sender, update);
     }
 
-    public void HandleInvoke<TMessage>(object? sender, TMessage update)
-    {
-        var item = GetEventContainer<TMessage>();
-        item?.Invoke(sender, update);
-    }
-
     public EventContainer<TMessage>? GetEventContainer<TMessage>()
     {
         lock (_lock)
@@ -183,7 +156,7 @@ public class EventCollection : IDisposable
             if (_complete)
             {
 #if DEBUG
-                throw new ArgumentException("Access forbidden into completed EventCollection.");
+                throw new ArgumentException("Access forbidden into completed EventProducerCollection.");
 #else
                 return null;
 #endif
@@ -192,7 +165,7 @@ public class EventCollection : IDisposable
             var items = _collection.OfType<EventContainer<TMessage>>();
             if (items.Count() > 1)
             {
-                throw new ArgumentException("Attempted to access duplicated event type in EventSourceCollection.");
+                throw new ArgumentException("Attempted to access duplicated event type in EventProducerCollection.");
             }
             else if (items.Count() == 1)
             {
@@ -200,23 +173,23 @@ public class EventCollection : IDisposable
             }
 
 #if DEBUG
-            throw new ArgumentException("Attempted to access non-existent event type in EventSourceCollection.");
+            throw new ArgumentException("Attempted to access non-existent event type in EventProducerCollection.");
 #else
             return null;
 #endif
         }
     }
 
-    public EventContainer<TMessage>? ForwardFrom<TMessage>(EventCollection otherCollection, IEventMailboxWriter destinationMailbox)
+    public EventContainer<TMessage>? ForwardFrom<TMessage>(EventProducerCollection sourceEvents, IEventMailboxWriter destinationMailbox)
     {
         if (!Exists<TMessage>())
         {
             EnableInvokeFor<TMessage>();
         }
 
-        if (!otherCollection.Exists<TMessage>())
+        if (!sourceEvents.Exists<TMessage>())
         {
-            otherCollection.EnableInvokeFor<TMessage>();
+            sourceEvents.EnableInvokeFor<TMessage>();
         }
 
         var item = GetEventContainer<TMessage>();
@@ -230,23 +203,10 @@ public class EventCollection : IDisposable
                 }
             };
 
-            return otherCollection.ConnectForwarder<TMessage>(forwarder);
+            return sourceEvents.ConnectForwarder<TMessage>(forwarder);
         }
 
         return null;
-    }
-
-    public void Connect<TMessage>(EventCollection eventCollection)
-    {
-        var item = GetEventContainer<TMessage>();
-        EventContainer<TMessage>? other = eventCollection.GetEventContainer<TMessage>();
-        if (item is not null && other is not null)
-        {
-            lock (_lock)
-            {
-                ConnectEventHandler(item, other);
-            }
-        }
     }
 
     public void Connect<TMessage>(EventHandler<TMessage> eventHandler)
@@ -261,7 +221,7 @@ public class EventCollection : IDisposable
             if (_complete)
             {
 #if DEBUG
-                throw new ArgumentException("Access forbidden into completed EventCollection.");
+                throw new ArgumentException("Access forbidden into completed EventProducerCollection.");
 #else
                 return;
 #endif
@@ -270,7 +230,7 @@ public class EventCollection : IDisposable
             var items = _collection.OfType<EventContainer<TMessage>>();
             if (items.Count() > 1)
             {
-                throw new ArgumentException("Attempted to access duplicated event type in EventSourceCollection.");
+                throw new ArgumentException("Attempted to access duplicated event type in EventProducerCollection.");
             }
             else if (items.Count() == 1)
             {
@@ -280,7 +240,7 @@ public class EventCollection : IDisposable
             {
                 if (assertEventExists)
                 {
-                    throw new ArgumentException("Attempted to access non-existent event type in EventSourceCollection.");
+                    throw new ArgumentException("Attempted to access non-existent event type in EventProducerCollection.");
                 }
                 else
                 {
@@ -306,7 +266,7 @@ public class EventCollection : IDisposable
             if (_complete)
             {
 #if DEBUG
-                throw new ArgumentException("Access forbidden into completed EventCollection.");
+                throw new ArgumentException("Access forbidden into completed EventProducerCollection.");
 #else
                 return;
 #endif
@@ -315,7 +275,7 @@ public class EventCollection : IDisposable
             var items = _collection.OfType<EventContainer<TMessage>>();
             if (items.Count() > 1)
             {
-                throw new ArgumentException("Attempted to access duplicated event type in EventSourceCollection.");
+                throw new ArgumentException("Attempted to access duplicated event type in EventProducerCollection.");
             }
             else if (items.Count() == 1)
             {
@@ -325,7 +285,7 @@ public class EventCollection : IDisposable
             {
                 if (assertEventExists)
                 {
-                    throw new ArgumentException("Attempted to access non-existent event type in EventSourceCollection.");
+                    throw new ArgumentException("Attempted to access non-existent event type in EventProducerCollection.");
                 }
                 else
                 {
@@ -346,7 +306,7 @@ public class EventCollection : IDisposable
             if (_complete)
             {
 #if DEBUG
-                throw new ArgumentException("Access forbidden into completed EventCollection.");
+                throw new ArgumentException("Access forbidden into completed EventProducerCollection.");
 #else
                 return null;
 #endif
@@ -355,7 +315,7 @@ public class EventCollection : IDisposable
             var items = _collection.OfType<EventContainer<TMessage>>();
             if (items.Count() > 1)
             {
-                throw new ArgumentException("Attempted to access duplicated event type in EventSourceCollection.");
+                throw new ArgumentException("Attempted to access duplicated event type in EventProducerCollection.");
             }
             else if (items.Count() == 1)
             {
@@ -365,7 +325,7 @@ public class EventCollection : IDisposable
             }
             else
             {
-                throw new ArgumentException("Attempted to access non-existent event type in EventSourceCollection.");
+                throw new ArgumentException("Attempted to access non-existent event type in EventProducerCollection.");
             }
         }
     }
@@ -373,7 +333,7 @@ public class EventCollection : IDisposable
     private void ConnectEventHandlerAsync<TMessage>(EventContainer<TMessage> item, EventHandler<TMessage> eventHandler)
     {
         item.AddHandlerAsync(eventHandler);
-        _eventConnections.Add(new EventAsyncConnection<TMessage>(item, eventHandler));
+        _eventConnections.Add(new AsyncHandlerConnection<TMessage>(item, eventHandler));
     }
 
     private void ConnectEventHandler<TMessage>(EventContainer<TMessage> item, EventHandler<TMessage> eventHandler)
@@ -391,6 +351,6 @@ public class EventCollection : IDisposable
     private void ConnectEventHandler<TMessage>(EventContainer<TMessage> item, EventContainer<TMessage> eventHandler)
     {
         item.SendTo(eventHandler);
-        _eventConnections.Add(new EventContainerConnection<TMessage>(item, eventHandler));
+        _eventConnections.Add(new EventForwardingConnection<TMessage>(item, eventHandler));
     }
 }

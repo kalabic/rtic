@@ -9,9 +9,9 @@ public class ConvertAndForward<TMessage, TArgument>
 
     private Func<TArgument, TMessage> _function;
 
-    public ConvertAndForward(EventCollection eventCollection, EventQueue eventQueue, Func<TArgument, TMessage> function)
+    public ConvertAndForward(EventProducerCollection sourceEvents, EventQueue eventQueue, Func<TArgument, TMessage> function)
     {
-        _event = eventQueue.ForwardFrom<TMessage>(eventCollection);
+        _event = eventQueue.ForwardFrom<TMessage>(sourceEvents);
         _function = function;
     }
 

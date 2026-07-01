@@ -53,7 +53,7 @@ public class RTICallAudio : RTIConsoleAudio
         base.Dispose(disposing);
     }
 
-    public void ConnectToConversation(EventCollection conversationEvents, RTICallConsole callConsole)
+    public void ConnectToConversation(EventProducerCollection conversationEvents, RTICallConsole callConsole)
     {
         conversationEvents.Connect<ConversationInputSpeechStarted>(HandleEvent);
         conversationEvents.Connect<ConversationInputSpeechFinished>(HandleEvent);

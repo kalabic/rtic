@@ -40,7 +40,7 @@ public class RTIConversationTask : RTIConversation
     /// All events from this _collection are (should be) forwarded to <see cref="ReceiverQueue"/>,
     /// but here made available for handling directly.
     /// </summary>
-    public override EventCollection ReceiverEvents { get { return _receiverTaskEvents; } }
+    public override EventProducerCollection ReceiverEvents { get { return _receiverTaskEvents; } }
 
     public override EventQueue ConversationEvents { get { return _receiver.ReceiverEvents; } }
 
@@ -72,13 +72,13 @@ public class RTIConversationTask : RTIConversation
 
     private object _lockRTE = new object();
 
-    private EventCollection _receiverTaskEvents;
+    private EventProducerCollection _receiverTaskEvents;
 
     protected RTIConversationTask(InfoLog info, CancellationToken cancellation)
     {
         this._info = info;
         this._startCanceller = new CancellationTokenSource();
-        this._receiverTaskEvents = new EventCollection(info, "ConversationUpdatesReceiverTask Events");
+        this._receiverTaskEvents = new EventProducerCollection(info, "ConversationUpdatesReceiverTask Events");
         this._cancellation = cancellation;
         this._receiver = new ConversationUpdatesReceiver(info);
 

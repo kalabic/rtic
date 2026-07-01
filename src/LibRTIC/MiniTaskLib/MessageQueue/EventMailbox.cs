@@ -16,7 +16,7 @@ public class EventMailbox : DisposableBase, IEventMailboxWriter
 
     protected EventQueue _forwardedEvents;
 
-    protected EventCollection _events;
+    protected EventProducerCollection _events;
 
     protected InfoLog _info;
 

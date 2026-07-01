@@ -4,7 +4,7 @@ using LibRTIC.MiniTaskLib.Model;
 
 namespace LibRTIC.MiniTaskLib;
 
-public class EventQueue : EventCollection
+public class EventQueue : EventProducerCollection
 {
     private IEventMailboxWriter? _destinationMailbox = null;
 
@@ -33,19 +33,19 @@ public class EventQueue : EventCollection
         base.Dispose(disposing);
     }
 
-    public EventContainer<TMessage>? ForwardFrom<TMessage>(EventCollection otherCollection)
+    public EventContainer<TMessage>? ForwardFrom<TMessage>(EventProducerCollection sourceEvents)
     {
         if (_destinationMailbox is not  null)
         {
-            return ForwardFrom<TMessage>(otherCollection, _destinationMailbox);
+            return ForwardFrom<TMessage>(sourceEvents, _destinationMailbox);
         }
 
         return null;
     }
 
-    public void ConnectForwardFrom<TMessage>(EventCollection otherCollection, EventHandler<TMessage> eventHandler)
+    public void ConnectForwardFrom<TMessage>(EventProducerCollection sourceEvents, EventHandler<TMessage> eventHandler)
     {
-        ForwardFrom<TMessage>(otherCollection);
+        ForwardFrom<TMessage>(sourceEvents);
         Connect(eventHandler);
     }
 }

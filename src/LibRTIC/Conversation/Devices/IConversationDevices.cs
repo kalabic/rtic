@@ -10,18 +10,18 @@ public interface IConversationDevices : IDisposable
 
     public IAudioBufferOutput GetAudioOutput();
 
-    public void ConnectReceiverEvents(EventCollection receiverEvents);
+    public void ConnectReceiverEvents(EventProducerCollection receiverEvents);
 
-    public void ConnectSessionEvents(EventCollection sessionEvents);
+    public void ConnectSessionEvents(EventProducerCollection sessionEvents);
 
     /// <summary>
-    /// Collection of playback related events.
+    /// Playback related events.
     /// <list type = "bullet">
     ///   <item><see cref="PlaybackFinishedUpdate"></item>
     ///   <item><see cref="PlaybackPositionReachedUpdate"></item>
     /// </list>
     /// </summary>
-    public EventCollection? GetAudioEventCollection();
+    public EventProducerCollection? GetPlaybackEvents();
 
     public bool ClearPlayback(ItemAttributes item);
 
@@ -32,7 +32,7 @@ public interface IConversationDevices : IDisposable
 
 
 /// <summary>
-/// Part of <see cref="EventCollection"/> returned by <see cref="IConversationDevices.GetAudioEventCollection()"/>
+/// Part of <see cref="EventProducerCollection"/> returned by <see cref="IConversationDevices.GetPlaybackEvents()"/>
 /// </summary>
 public class PlaybackFinishedUpdate
 {
@@ -47,7 +47,7 @@ public class PlaybackFinishedUpdate
 }
 
 /// <summary>
-/// Part of <see cref="EventCollection"/> returned by <see cref="IConversationDevices.GetAudioEventCollection()"/>
+/// Part of <see cref="EventProducerCollection"/> returned by <see cref="IConversationDevices.GetPlaybackEvents()"/>
 /// </summary>
 public class PlaybackPositionReachedUpdate
 {

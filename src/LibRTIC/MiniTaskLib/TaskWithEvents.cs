@@ -14,7 +14,7 @@ public abstract class TaskWithEvents : TaskBase
 
     private bool _disposed = false;
 
-    public EventCollection TaskEvents { get { return _taskEvents; } }
+    public EventProducerCollection TaskEvents { get { return _taskEvents; } }
 
     public string TaskLabel { get { return _label; } }
 
@@ -26,7 +26,7 @@ public abstract class TaskWithEvents : TaskBase
 
     private string _label = "";
 
-    private EventCollection _taskEvents;
+    private EventProducerCollection _taskEvents;
 
     private CancellationTokenSource _cancellationTokenSource;
 

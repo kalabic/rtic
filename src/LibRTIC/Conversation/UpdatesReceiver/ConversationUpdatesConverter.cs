@@ -99,37 +99,37 @@ public class ConversationUpdatesConverter
                              RealtimeServerUpdateConversationItemTruncated> 
                              _actionItemTruncated;
 
-    public ConversationUpdatesConverter(EventCollection eventCollection, EventQueue eventQueue)
+    public ConversationUpdatesConverter(EventProducerCollection sourceEvents, EventQueue eventQueue)
     {
-        _actionSessionStarted = new(eventCollection, eventQueue);
-        _actionInputAudioCleared = new(eventCollection, eventQueue);
-        _actionInputAudioCommitted = new(eventCollection, eventQueue);
-        _actionItemCreated = new(eventCollection, eventQueue);
-        _actionItemDeleted = new(eventCollection, eventQueue);
-        _actionError = new(eventCollection, eventQueue);
-        _actionInputSpeechStarted = new(eventCollection, eventQueue);
-        _actionInputSpeechFinished = new(eventCollection, eventQueue);
-        _actionItemStreamingAudioFinished = new(eventCollection, eventQueue);
-        _actionInputTranscriptionFailed = new(eventCollection, eventQueue,
+        _actionSessionStarted = new(sourceEvents, eventQueue);
+        _actionInputAudioCleared = new(sourceEvents, eventQueue);
+        _actionInputAudioCommitted = new(sourceEvents, eventQueue);
+        _actionItemCreated = new(sourceEvents, eventQueue);
+        _actionItemDeleted = new(sourceEvents, eventQueue);
+        _actionError = new(sourceEvents, eventQueue);
+        _actionInputSpeechStarted = new(sourceEvents, eventQueue);
+        _actionInputSpeechFinished = new(sourceEvents, eventQueue);
+        _actionItemStreamingAudioFinished = new(sourceEvents, eventQueue);
+        _actionInputTranscriptionFailed = new(sourceEvents, eventQueue,
             (update) => { return new ConversationInputTranscriptionFailedConverter(update); });
-        _actionInputTranscriptionFinished = new(eventCollection, eventQueue,
+        _actionInputTranscriptionFinished = new(sourceEvents, eventQueue,
             (update) => { return new ConversationInputTranscriptionFinishedConverter(update); });
-        _actionItemStreamingAudioTranscriptionFinished = new(eventCollection, eventQueue);
-        _actionItemStreamingFinished = new(eventCollection, eventQueue,
+        _actionItemStreamingAudioTranscriptionFinished = new(sourceEvents, eventQueue);
+        _actionItemStreamingFinished = new(sourceEvents, eventQueue,
             (update) => { return new ConversationItemStreamingFinishedConverter(update); });
-        _actionItemStreamingPartAudioDelta = new(eventCollection, eventQueue,
+        _actionItemStreamingPartAudioDelta = new(sourceEvents, eventQueue,
             (update) => { return new ConversationItemStreamingPartAudioDeltaConverter(update); });
-        _actionItemStreamingPartTranscriptDelta = new(eventCollection, eventQueue,
+        _actionItemStreamingPartTranscriptDelta = new(sourceEvents, eventQueue,
             (update) => { return new ConversationItemStreamingPartTranscriptDeltaConverter(update); });
-        _actionItemStreamingPartFinished = new(eventCollection, eventQueue);
-        _actionItemStreamingStarted = new(eventCollection, eventQueue,
+        _actionItemStreamingPartFinished = new(sourceEvents, eventQueue);
+        _actionItemStreamingStarted = new(sourceEvents, eventQueue,
             (update) => { return new ConversationItemStreamingStartedConverter(update); });
-        _actionItemStreamingTextFinished = new(eventCollection, eventQueue);
-        _actionRateLimits = new(eventCollection, eventQueue);
-        _actionResponseFinished = new(eventCollection, eventQueue);
-        _actionResponseStarted = new(eventCollection, eventQueue);
-        _actionSessionConfigured = new(eventCollection, eventQueue);
-        _actionItemTruncated = new(eventCollection, eventQueue);
+        _actionItemStreamingTextFinished = new(sourceEvents, eventQueue);
+        _actionRateLimits = new(sourceEvents, eventQueue);
+        _actionResponseFinished = new(sourceEvents, eventQueue);
+        _actionResponseStarted = new(sourceEvents, eventQueue);
+        _actionSessionConfigured = new(sourceEvents, eventQueue);
+        _actionItemTruncated = new(sourceEvents, eventQueue);
     }
 
 

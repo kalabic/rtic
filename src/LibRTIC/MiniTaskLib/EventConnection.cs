@@ -2,7 +2,7 @@
 
 namespace LibRTIC.MiniTaskLib;
 
-public abstract class EventConnectionInstance : IDisposable
+internal abstract class EventConnectionBase : IDisposable
 {
 #if DEBUG_UNDISPOSED
     public static int UNDISPOSED_COUNT = 0;
@@ -15,7 +15,7 @@ public abstract class EventConnectionInstance : IDisposable
     public abstract void Dispose();
 }
 
-public abstract class EventConnection<TMessage> : EventConnectionInstance
+internal abstract class EventConnection<TMessage> : EventConnectionBase
 {
     protected EventContainer<TMessage>? _item;
 
@@ -67,7 +67,7 @@ public abstract class EventConnection<TMessage> : EventConnectionInstance
     protected abstract void Disconnect();
 }
 
-public class EventHandlerConnection<TMessage> : EventConnection<TMessage>
+internal class EventHandlerConnection<TMessage> : EventConnection<TMessage>
 {
     EventHandler<TMessage> _otherHandler;
 
@@ -83,11 +83,11 @@ public class EventHandlerConnection<TMessage> : EventConnection<TMessage>
     }
 }
 
-public class EventAsyncConnection<TMessage> : EventConnection<TMessage>
+internal class AsyncHandlerConnection<TMessage> : EventConnection<TMessage>
 {
     EventHandler<TMessage> _otherHandler;
 
-    public EventAsyncConnection(EventContainer<TMessage> item, EventHandler<TMessage> otherHandler)
+    public AsyncHandlerConnection(EventContainer<TMessage> item, EventHandler<TMessage> otherHandler)
         : base(item)
     {
         this._otherHandler = otherHandler;
@@ -99,11 +99,11 @@ public class EventAsyncConnection<TMessage> : EventConnection<TMessage>
     }
 }
 
-public class EventContainerConnection<TMessage> : EventConnection<TMessage>
+internal class EventForwardingConnection<TMessage> : EventConnection<TMessage>
 {
     EventContainer<TMessage> _otherContainer;
 
-    public EventContainerConnection(EventContainer<TMessage> item, EventContainer<TMessage> otherContainer)
+    public EventForwardingConnection(EventContainer<TMessage> item, EventContainer<TMessage> otherContainer)
         : base(item)
     {
         this._otherContainer = otherContainer;
