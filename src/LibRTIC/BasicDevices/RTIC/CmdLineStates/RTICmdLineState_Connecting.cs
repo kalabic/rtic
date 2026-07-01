@@ -1,4 +1,6 @@
-﻿namespace LibRTIC.BasicDevices.RTIC.CmdLineStates;
+﻿using DotBase.Log;
+
+namespace LibRTIC.BasicDevices.RTIC.CmdLineStates;
 
 public class RTICmdLineState_Connecting : RTIConsoleStateWithTimer
 {
@@ -6,7 +8,7 @@ public class RTICmdLineState_Connecting : RTIConsoleStateWithTimer
 
     private int _onTimerCount = 0;
 
-    public RTICmdLineState_Connecting(ISystemConsole? cout = null)
+    public RTICmdLineState_Connecting(ITextConsole? cout = null)
         : base(cout)
     { }
 

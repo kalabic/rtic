@@ -1,4 +1,5 @@
-﻿using LibRTIC.MiniTaskLib.Model;
+using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 
 namespace LibRTIC.BasicDevices.RTIC;
 
@@ -9,7 +10,7 @@ public class RTIConsole
     : IRTIStateCollection
     , IRTOutput
     , ISessionEventProcessor
-    , ISystemConsole
+    , ITextConsole
 {
     public event EventHandler<RTIConsoleStateId>? StateUpdate;
 
@@ -55,7 +56,7 @@ public class RTIConsole
                       RTIConsoleStateBase answering,
                       RTIConsoleStateBase waitingItem,
                       RTIConsoleStateBase writingItem,
-                      ISystemConsole? cout = null)
+                      ITextConsole? cout = null)
     {
         _consoleNotification = new(this);
         _inactive = inactive;
@@ -144,12 +145,12 @@ public class RTIConsole
     }
 
     //
-    // ISystemConsole
+    // ITextConsole
     //
 
     public void SetCursorLeft(int value)
     {
-        throw new NotImplementedException();
+        // RTIConsole formats text through its current state; cursor movement is handled by the underlying output target.
     }
 
     public void Write(string? message)

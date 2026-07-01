@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using MiniRTICallServer.RTISorcery.RTICallSessionConsole;
 using LibRTIC.Config;
 using LibRTIC.Conversation;

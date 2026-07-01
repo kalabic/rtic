@@ -1,5 +1,6 @@
 ﻿using LibRTIC.BasicDevices;
 using LibRTIC.BasicDevices.RTIC;
+using DotBase.Log;
 
 namespace MiniRTICallServer.RTISorcery.RTICallSessionConsole;
 
@@ -9,7 +10,7 @@ public class RTICmdLineState_Answering : RTIConsoleStateWithTimer
 
     private int _onTimerCount = 0;
 
-    public RTICmdLineState_Answering(ISystemConsole? cout = null)
+    public RTICmdLineState_Answering(ITextConsole? cout = null)
         : base(cout)
     { }
 

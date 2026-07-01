@@ -1,4 +1,4 @@
-﻿using OpenAI.Realtime;
+using OpenAI.Realtime;
 using LibRTIC.Config;
 using LibRTIC.Conversation.Devices;
 using LibRTIC.MiniTaskLib;

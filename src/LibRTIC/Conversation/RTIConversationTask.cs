@@ -1,4 +1,4 @@
-﻿using AudioFormatLib;
+using AudioFormatLib;
 using AudioFormatLib.Buffers;
 using AudioFormatLib.IO;
 using LibRTIC.Config;

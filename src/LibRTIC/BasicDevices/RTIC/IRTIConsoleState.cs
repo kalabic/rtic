@@ -1,10 +1,12 @@
-﻿namespace LibRTIC.BasicDevices.RTIC;
+using DotBase.Log;
+
+namespace LibRTIC.BasicDevices.RTIC;
 
 public interface IRTIConsoleState : IRTWriter
 {
     public RTIConsoleStateId State { get; }
 
-    public void SetCOut(ISystemConsole? cout);
+    public void SetCOut(ITextConsole? cout);
 
     public void Enter();
 

@@ -1,10 +1,11 @@
-﻿using MiniRTICallServer.RTISorcery.RTICallSessionConsole;
+using MiniRTICallServer.RTISorcery.RTICallSessionConsole;
+using DotBase.Log;
 
 namespace LibRTIC.BasicDevices.RTIC.CmdLineStates;
 
 public class RTICmdLineConsole
 {
-    static public RTIConsole New(ISystemConsole? cout = null)
+    static public RTIConsole New(ITextConsole? cout = null)
     {
         var inactive = new RTICmdLineState_Inactive(cout);
         var connecting = new RTICmdLineState_Connecting(cout);

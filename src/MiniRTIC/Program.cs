@@ -1,4 +1,4 @@
-﻿//
+//
 // For testing purposes, program can be built with or without RUN_SYNC (start as 'void Main()' or 'async Task Main()').
 //
 

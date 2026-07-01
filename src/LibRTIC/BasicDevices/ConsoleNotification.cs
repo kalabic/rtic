@@ -1,4 +1,5 @@
-﻿using LibRTIC.MiniTaskLib.Model;
+using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 
 namespace LibRTIC.BasicDevices;
 
@@ -7,12 +8,12 @@ namespace LibRTIC.BasicDevices;
 /// </summary>
 public class ConsoleNotification : Info, IDisposable
 {
-    private ISystemConsole? _writer = null;
+    private ITextConsole? _writer = null;
 
     public ConsoleNotification()
     { }
 
-    public ConsoleNotification(ISystemConsole writer)
+    public ConsoleNotification(ITextConsole writer)
     {
         _writer = writer;
     }

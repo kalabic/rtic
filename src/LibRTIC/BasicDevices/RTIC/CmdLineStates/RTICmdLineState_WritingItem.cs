@@ -1,4 +1,6 @@
-﻿namespace LibRTIC.BasicDevices.RTIC.CmdLineStates;
+﻿using DotBase.Log;
+
+namespace LibRTIC.BasicDevices.RTIC.CmdLineStates;
 
 public class RTICmdLineState_WritingItem : RTIConsoleStateWithTimer
 {
@@ -9,7 +11,7 @@ public class RTICmdLineState_WritingItem : RTIConsoleStateWithTimer
 
     private string _agentBuffer = "";
 
-    public RTICmdLineState_WritingItem(ISystemConsole? cout = null)
+    public RTICmdLineState_WritingItem(ITextConsole? cout = null)
        : base(cout)
     { }
 
