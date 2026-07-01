@@ -1,4 +1,4 @@
-﻿using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 
 namespace LibRTIC.BasicDevices.RTIC;
 
@@ -9,5 +9,5 @@ public interface IRTOutput : IRTWriter
 {
     public abstract IRTSessionEvents Event { get; }
 
-    public abstract Info Info { get; }
+    public abstract InfoLog Info { get; }
 }

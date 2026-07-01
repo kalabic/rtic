@@ -1,4 +1,4 @@
-﻿using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 
 namespace LibRTIC.MiniTaskLib;
 
@@ -10,7 +10,7 @@ public interface IEventContainer
 
 public class EventContainer<TMessage> : IEventContainer
 {
-    private Info? _info = null;
+    private InfoLog? _info = null;
 
     /// <summary>
     /// Difference between async and normal event handlers is that async handlers are wrapped up into
@@ -20,7 +20,7 @@ public class EventContainer<TMessage> : IEventContainer
 
     private event EventHandler<TMessage>? _event;
 
-    public EventContainer(Info? info = null)
+    public EventContainer(InfoLog? info = null)
     {
         _info = info;
     }
@@ -40,7 +40,7 @@ public class EventContainer<TMessage> : IEventContainer
         }
         catch (Exception ex)
         {
-            _info?.ExceptionOccured(ex);
+            _info?.Warning("Exception while invoking event handlers.", ex);
         }
     }
 

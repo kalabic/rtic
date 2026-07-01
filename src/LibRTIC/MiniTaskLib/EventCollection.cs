@@ -1,6 +1,6 @@
-﻿using LibRTIC.MiniTaskLib.Base;
+using LibRTIC.MiniTaskLib.Base;
+using DotBase.Log;
 using LibRTIC.MiniTaskLib.Model;
-using System;
 using System.Collections.ObjectModel;
 
 namespace LibRTIC.MiniTaskLib;
@@ -25,7 +25,7 @@ public class EventCollection : IDisposable
 
     private object _lock = new object();
 
-    private Info _info;
+    private InfoLog _info;
 
     private bool _complete = false;
 
@@ -33,7 +33,7 @@ public class EventCollection : IDisposable
 
     private Collection<IEventContainer> _collection = new();
 
-    public EventCollection(Info info, string label)
+    public EventCollection(InfoLog info, string label)
     {
         this._info = info;
         this.Label = label;

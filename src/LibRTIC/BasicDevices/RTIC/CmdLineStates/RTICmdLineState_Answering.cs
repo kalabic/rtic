@@ -1,5 +1,4 @@
-﻿using LibRTIC.BasicDevices;
-using LibRTIC.BasicDevices.RTIC;
+﻿using LibRTIC.BasicDevices.RTIC;
 using DotBase.Log;
 
 namespace MiniRTICallServer.RTISorcery.RTICallSessionConsole;

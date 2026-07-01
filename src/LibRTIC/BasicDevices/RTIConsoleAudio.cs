@@ -1,9 +1,9 @@
-﻿using AudioFormatLib;
+using AudioFormatLib;
 using AudioFormatLib.IO;
 using DotBase.Core;
 using LibRTIC.BasicDevices.RTIC;
 using LibRTIC.Conversation;
-using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 using Timer = System.Timers.Timer;
 
 namespace LibRTIC.BasicDevices;
@@ -42,7 +42,7 @@ public abstract class RTIConsoleAudio : DisposableBase
 
     public virtual float Volume { get; set; }
 
-    protected Info _info;
+    protected InfoLog _info;
 
     protected AFrameFormat _audioFormat;
 
@@ -58,7 +58,7 @@ public abstract class RTIConsoleAudio : DisposableBase
 
     private float _normalVolume = 0.0f;
 
-    public RTIConsoleAudio(Info info,
+    public RTIConsoleAudio(InfoLog info,
                            AFrameFormat audioFormat,
                            CancellationToken cancellation)
     {

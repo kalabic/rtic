@@ -1,6 +1,6 @@
-﻿using LibRTIC.MiniTaskLib.Base;
+using LibRTIC.MiniTaskLib.Base;
 using LibRTIC.MiniTaskLib.Events;
-using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 
 namespace LibRTIC.MiniTaskLib.MessageQueue;
 
@@ -15,11 +15,11 @@ public class ForwardedEventQueue : MessageQueueFunction<IProcessMessage>
 
     protected EventCollection _events;
 
-    public ForwardedEventQueue(Info info)
+    public ForwardedEventQueue(InfoLog info)
         : this(info, new CancellationTokenSource())
     { }
 
-    private ForwardedEventQueue(Info info, CancellationTokenSource cancellationSource)
+    private ForwardedEventQueue(InfoLog info, CancellationTokenSource cancellationSource)
         : base(info)
     {
         this._forwardedEvents = new(_info, "ForwardedEventQueue Forwarded Events", _channel);
@@ -70,7 +70,7 @@ public class ForwardedEventQueue : MessageQueueFunction<IProcessMessage>
 
     protected void NotifyExceptionOccurred(Exception ex)
     {
-        _info.ExceptionOccured(ex);
+        _info.Error("Forwarded event queue failed.", ex);
         InvokeEvent(new TaskExceptionOccured(ex));
     }
 

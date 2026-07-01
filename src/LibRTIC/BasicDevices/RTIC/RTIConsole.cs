@@ -1,5 +1,5 @@
-using LibRTIC.MiniTaskLib.Model;
 using DotBase.Log;
+using System.Diagnostics.Tracing;
 
 namespace LibRTIC.BasicDevices.RTIC;
 
@@ -16,7 +16,7 @@ public class RTIConsole
 
     public IRTSessionEvents Event { get { return _sessionEventProxy; } }
 
-    public Info Info { get { return _consoleNotification; } }
+    public InfoLog Info { get { return _consoleInfo; } }
 
     public IRTIConsoleState State_CurrentState { get { return _currentState; } }
 
@@ -33,7 +33,7 @@ public class RTIConsole
 
     protected object _locker = new object();
 
-    protected ConsoleNotification _consoleNotification;
+    protected InfoLog _consoleInfo;
 
     protected IRTIConsoleState? _fixedState = null;
 
@@ -58,7 +58,7 @@ public class RTIConsole
                       RTIConsoleStateBase writingItem,
                       ITextConsole? cout = null)
     {
-        _consoleNotification = new(this);
+        _consoleInfo = new ConsoleInfo(this, EventLevel.Verbose);
         _inactive = inactive;
         _connecting = connecting;
         _answering = answering;

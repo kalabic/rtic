@@ -1,7 +1,7 @@
-﻿using AudioFormatLib;
+using AudioFormatLib;
 using AudioFormatLib.IO;
 using LibRTIC.BasicDevices;
-using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 
 namespace LibRTIC_Win.BasicDevices;
 
@@ -30,7 +30,7 @@ public class WinConsoleAudio : RTIConsoleAudio
 
     private MicrophoneAudioStream? _microphone = null;
 
-    public WinConsoleAudio(Info info, AFrameFormat audioFormat, CancellationToken cancellation) 
+    public WinConsoleAudio(InfoLog info, AFrameFormat audioFormat, CancellationToken cancellation)
         : base(info, audioFormat, cancellation)
     {
     }

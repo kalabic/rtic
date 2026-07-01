@@ -1,5 +1,5 @@
-﻿using LibRTIC.MiniTaskLib.MessageQueue;
-using LibRTIC.MiniTaskLib.Model;
+using LibRTIC.MiniTaskLib.MessageQueue;
+using DotBase.Log;
 using OpenAI.Realtime;
 using System.Net.WebSockets;
 
@@ -18,10 +18,10 @@ public abstract class ConversationUpdatesDispatcher : ForwardedEventQueue
 
     private ConversationUpdatesConverter _converter;
 
-    protected ConversationUpdatesDispatcher(Info info)
+    protected ConversationUpdatesDispatcher(InfoLog info)
         : this(info, CancellationToken.None) { }
 
-    protected ConversationUpdatesDispatcher(Info info, CancellationToken cancellation)
+    protected ConversationUpdatesDispatcher(InfoLog info, CancellationToken cancellation)
         : base(info)
     {
         _converter = new(_events, _forwardedEvents);

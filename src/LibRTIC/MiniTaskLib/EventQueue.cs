@@ -1,4 +1,5 @@
-﻿using LibRTIC.MiniTaskLib.Base;
+using LibRTIC.MiniTaskLib.Base;
+using DotBase.Log;
 using LibRTIC.MiniTaskLib.Model;
 
 namespace LibRTIC.MiniTaskLib;
@@ -7,7 +8,7 @@ public class EventQueue : EventCollection
 {
     private IQueueWriter<IProcessMessage>? _destinationQueue = null;
 
-    public EventQueue(Info info, string label, IQueueWriter<IProcessMessage> destinationQueue)
+    public EventQueue(InfoLog info, string label, IQueueWriter<IProcessMessage> destinationQueue)
          : base(info, label)
     {
         _destinationQueue = destinationQueue;

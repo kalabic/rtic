@@ -1,17 +1,17 @@
-﻿using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 
 namespace LibRTIC.MiniTaskLib;
 
 public class ActionTask : TaskWithEvents
 {
-    static public ActionTask RunAction(Info info, Action<CancellationToken> action)
+    static public ActionTask RunAction(InfoLog info, Action<CancellationToken> action)
     {
         var task = new ActionTask(info, action);
         task.Start();
         return task;
     }
 
-    static public ActionTask RunAction(Info info, string label, Action<CancellationToken> action)
+    static public ActionTask RunAction(InfoLog info, string label, Action<CancellationToken> action)
     {
         var task = new ActionTask(info, action);
         task.SetLabel(label);
@@ -21,13 +21,13 @@ public class ActionTask : TaskWithEvents
 
     private Action<CancellationToken>? _action = null;
 
-    public ActionTask(Info info, Action<CancellationToken> action)
+    public ActionTask(InfoLog info, Action<CancellationToken> action)
         : base(info)
     {
         this._action = action;
     }
 
-    public ActionTask(Info info, Action<CancellationToken> action, CancellationToken cancellation)
+    public ActionTask(InfoLog info, Action<CancellationToken> action, CancellationToken cancellation)
         : base(info, cancellation)
     {
         this._action = action;

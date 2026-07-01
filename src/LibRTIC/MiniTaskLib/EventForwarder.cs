@@ -1,12 +1,13 @@
-﻿using LibRTIC.MiniTaskLib.Base;
+using LibRTIC.MiniTaskLib.Base;
 using LibRTIC.MiniTaskLib.MessageQueue;
+using DotBase.Log;
 using LibRTIC.MiniTaskLib.Model;
 
 namespace LibRTIC.MiniTaskLib;
 
 public class EventForwarder<TEventArgs> : IInvokeEvent<TEventArgs>
 {
-    private Info _info;
+    private InfoLog _info;
 
     private IQueueWriter<IProcessMessage>? _destinationQueue = null;
 
@@ -14,7 +15,7 @@ public class EventForwarder<TEventArgs> : IInvokeEvent<TEventArgs>
 
     private event EventHandler<TEventArgs>? _eventProxy = null;
 
-    public EventForwarder(Info info, IQueueWriter<IProcessMessage> destinationQueue, EventContainer<TEventArgs> destinationHandler)
+    public EventForwarder(InfoLog info, IQueueWriter<IProcessMessage> destinationQueue, EventContainer<TEventArgs> destinationHandler)
     {
         this._info = info;
         this._destinationQueue = destinationQueue;
@@ -47,7 +48,7 @@ public class EventForwarder<TEventArgs> : IInvokeEvent<TEventArgs>
         }
         catch (Exception ex)
         {
-            _info.ExceptionOccured(ex);
+            _info.Warning("Exception while forwarding event.", ex);
         }
     }
 }

@@ -5,7 +5,7 @@ using LibRTIC.Config;
 using LibRTIC.Conversation.UpdatesReceiver;
 using LibRTIC.MiniTaskLib;
 using LibRTIC.MiniTaskLib.Events;
-using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 using OpenAI.Realtime;
 using System.Net.WebSockets;
 using static LibRTIC.Conversation.FailedToConnect;
@@ -17,7 +17,7 @@ namespace LibRTIC.Conversation;
 
 public class RTIConversationTask : RTIConversation
 {
-    public static RTIConversation Create(Info info, CancellationToken cancellation)
+    public static RTIConversation Create(InfoLog info, CancellationToken cancellation)
     {
         return new RTIConversationTask(info, cancellation);
     }
@@ -48,7 +48,7 @@ public class RTIConversationTask : RTIConversation
 
 
 
-    protected readonly Info _info;
+    protected readonly InfoLog _info;
 
     private CancellationTokenSource _startCanceller;
 
@@ -74,7 +74,7 @@ public class RTIConversationTask : RTIConversation
 
     private EventCollection _receiverTaskEvents;
 
-    protected RTIConversationTask(Info info, CancellationToken cancellation)
+    protected RTIConversationTask(InfoLog info, CancellationToken cancellation)
     {
         this._info = info;
         this._startCanceller = new CancellationTokenSource();
@@ -457,7 +457,7 @@ public class RTIConversationTask : RTIConversation
         }
         catch (Exception ex)
         {
-            _info.ExceptionOccured(ex);
+            _info.Error("Conversation session failed.", ex);
             TaskExceptionOccurred(ex);
         }
     }
@@ -529,7 +529,7 @@ public class RTIConversationTask : RTIConversation
     public void HandleEvent(object? sender, TaskExceptionOccured update)
     {
         Cancel();
-        _info.ExceptionOccured(update.Exception);
+        _info.Error("Conversation task failed.", update.Exception);
     }
 
     private void InternalCancelStopDisposeAll()

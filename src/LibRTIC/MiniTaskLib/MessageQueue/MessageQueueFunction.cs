@@ -1,5 +1,6 @@
-﻿using DotBase.Core;
+using DotBase.Core;
 using LibRTIC.MiniTaskLib.Base;
+using DotBase.Log;
 using LibRTIC.MiniTaskLib.Model;
 
 namespace LibRTIC.MiniTaskLib.MessageQueue;
@@ -13,7 +14,7 @@ public abstract class MessageQueueFunction<TMessage> : DisposableBase, IQueueWri
 
     protected ChannelContainer<TMessage> _channel = new();
 
-    protected Info _info;
+    protected InfoLog _info;
 
     private string _label = "";
 
@@ -21,7 +22,7 @@ public abstract class MessageQueueFunction<TMessage> : DisposableBase, IQueueWri
 
     private Scheduler _scheduler = new();
 
-    public MessageQueueFunction(Info info)
+    public MessageQueueFunction(InfoLog info)
     {
         this._info = info;
     }

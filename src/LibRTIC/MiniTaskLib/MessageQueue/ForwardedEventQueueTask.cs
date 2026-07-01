@@ -1,4 +1,5 @@
-﻿using LibRTIC.MiniTaskLib.Base;
+using LibRTIC.MiniTaskLib.Base;
+using DotBase.Log;
 using LibRTIC.MiniTaskLib.Model;
 
 namespace LibRTIC.MiniTaskLib.MessageQueue;
@@ -12,7 +13,7 @@ public class ForwardedEventQueueTask : TaskWithEvents, IQueueWriter<IProcessMess
 
     private ForwardedEventQueue _queue;
 
-    public ForwardedEventQueueTask(Info info)
+    public ForwardedEventQueueTask(InfoLog info)
         : base(info)
     {
         _queue = new ForwardedEventQueue(info);

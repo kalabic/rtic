@@ -1,6 +1,6 @@
-﻿using LibRTIC.MiniTaskLib.Base;
+using LibRTIC.MiniTaskLib.Base;
 using LibRTIC.MiniTaskLib.Events;
-using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 
 namespace LibRTIC.MiniTaskLib;
 
@@ -20,7 +20,7 @@ public abstract class TaskWithEvents : TaskBase
 
 
 
-    protected Info _info;
+    protected InfoLog _info;
 
     private object _lock = new object();
 
@@ -34,15 +34,15 @@ public abstract class TaskWithEvents : TaskBase
 
     private Task? _taskContinueAction = null;
 
-    public TaskWithEvents(Info info)
+    public TaskWithEvents(InfoLog info)
         : this(info, new CancellationTokenSource())
     { }
 
-    public TaskWithEvents(Info info, CancellationToken cancellation)
+    public TaskWithEvents(InfoLog info, CancellationToken cancellation)
         : this(info, CancellationTokenSource.CreateLinkedTokenSource(cancellation))
     { }
 
-    private TaskWithEvents(Info info, CancellationTokenSource cancellation)
+    private TaskWithEvents(InfoLog info, CancellationTokenSource cancellation)
         // TODO: Still considering that CancellationToken.None might be better for base class. WIP
         : base(cancellation.Token, TaskCreationOptions.LongRunning)
     {
@@ -123,11 +123,11 @@ public abstract class TaskWithEvents : TaskBase
 #if DEBUG_VERBOSE_DISPOSE
                 if (String.IsNullOrEmpty(_label))
                 {
-                    _info.ObjectDisposed(this);
+                    _info.Event("ObjectDisposed", "Disposed object", this);
                 }
                 else
                 {
-                    _info.ObjectDisposed(_label);
+                    _info.Event("ObjectDisposed", _label);
                 }
 #endif
             }
@@ -163,11 +163,11 @@ public abstract class TaskWithEvents : TaskBase
             }
             catch (OperationCanceledException ex)
             {
-                _info.ExceptionOccured(ex);
+                _info.Info("Stop task canceled while waiting for " + _label, ex);
             }
             catch (AggregateException ex)
             {
-                _info.ExceptionOccured(ex);
+                _info.Warning("Stop task failed while waiting for " + _label, ex);
             }
         }, stopActionCancellation);
 #if DEBUG
@@ -222,7 +222,7 @@ public abstract class TaskWithEvents : TaskBase
             NotifyExceptionOccurred(ex);
         }
 #if DEBUG_VERBOSE
-        _info.TaskFinished(_label, this);
+        _info.Event("TaskFinished", _label, this);
 #endif
     }
 
@@ -250,7 +250,7 @@ public abstract class TaskWithEvents : TaskBase
 
     virtual protected void NotifyExceptionOccurred(Exception ex)
     {
-        _info.ExceptionOccured(ex);
+        _info.Error("Task failed: " + _label, ex);
         InvokeTaskEvent(new TaskExceptionOccured(ex));
     }
 }

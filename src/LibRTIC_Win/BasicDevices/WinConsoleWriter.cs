@@ -1,7 +1,5 @@
 using LibRTIC.BasicDevices.RTIC.CmdLineStates;
 using LibRTIC.BasicDevices.RTIC;
-using LibRTIC.BasicDevices;
-using LibRTIC.MiniTaskLib.Model;
 using DotBase.Log;
 
 namespace LibRTIC_Win.BasicDevices;
@@ -12,7 +10,7 @@ public class WinConsoleWriter : IRTOutput
 
     public IRTSessionEvents Event { get { return _mainConsole.Event; } }
 
-    public Info Info { get { return _mainConsole.Info; } }
+    public InfoLog Info { get { return _mainConsole.Info; } }
 
 
 

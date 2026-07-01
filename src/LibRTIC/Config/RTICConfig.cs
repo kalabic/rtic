@@ -1,5 +1,5 @@
 using OpenAI.Realtime;
-using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 using System.Text.Json.Nodes;
 
 namespace LibRTIC.Config;
@@ -28,7 +28,7 @@ public class RTICConfig
                             + " - OPENAI_API_KEY");
     }
 
-    static public RTICConfig GetDefaultOptions(Info info)
+    static public RTICConfig GetDefaultOptions(InfoLog info)
     {
         var clientOptions = RTICConfig.GetDefaultClientOptions(info);
         if (clientOptions.Type == EndpointType.IncompleteOptions)
@@ -50,7 +50,7 @@ public class RTICConfig
         return ConfiguredClient.DEFAULT_API_FILENAME;
     }
 
-    static private ClientApiConfigReader GetDefaultClientOptions(Info info)
+    static private ClientApiConfigReader GetDefaultClientOptions(InfoLog info)
     {
         // Try to load options first from config file, then from environment.
         return ClientApiConfigReader.FromFileOrEnvironment(info, GetDefaultApiConfigPath());
@@ -93,7 +93,7 @@ public class RTICConfig
         return sessionOptions;
     }
 
-    static public RTICConfig ReadFromFile(CommandLineArguments args, Info info)
+    static public RTICConfig ReadFromFile(CommandLineArguments args, InfoLog info)
     {
         var apiConfigFile = args.apiConfigFile;
         var sessionConfigFile = args.sessionConfigFile;
@@ -219,7 +219,7 @@ public class RTICConfig
         return new RTICConfig(clientOptions, sessionOptions, args.multiSession);
     }
 
-    private static List<RealtimeFunctionTool>? ParseToolsJson(Info info, string filePath, JsonArray rootArray)
+    private static List<RealtimeFunctionTool>? ParseToolsJson(InfoLog info, string filePath, JsonArray rootArray)
     {
         try
         {
@@ -289,7 +289,7 @@ public class RTICConfig
         this._enableMultiSession = enableMultiSession;
     }
 
-    public void PrintApiConfigSourceInfo(Info info)
+    public void PrintApiConfigSourceInfo(InfoLog info)
     {
         if (_client is not null)
         {
