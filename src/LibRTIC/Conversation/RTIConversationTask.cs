@@ -1,11 +1,11 @@
-﻿using AudioFormatLib;
+using AudioFormatLib;
 using AudioFormatLib.Buffers;
 using AudioFormatLib.IO;
 using LibRTIC.Config;
 using LibRTIC.Conversation.UpdatesReceiver;
 using LibRTIC.MiniTaskLib;
 using LibRTIC.MiniTaskLib.Events;
-using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 using OpenAI.Realtime;
 using System.Net.WebSockets;
 using static LibRTIC.Conversation.FailedToConnect;
@@ -17,7 +17,7 @@ namespace LibRTIC.Conversation;
 
 public class RTIConversationTask : RTIConversation
 {
-    public static RTIConversation Create(Info info, CancellationToken cancellation)
+    public static RTIConversation Create(InfoLog info, CancellationToken cancellation)
     {
         return new RTIConversationTask(info, cancellation);
     }
@@ -40,7 +40,7 @@ public class RTIConversationTask : RTIConversation
     /// All events from this _collection are (should be) forwarded to <see cref="ReceiverQueue"/>,
     /// but here made available for handling directly.
     /// </summary>
-    public override EventCollection ReceiverEvents { get { return _receiverTaskEvents; } }
+    public override EventProducerCollection ReceiverEvents { get { return _receiverTaskEvents; } }
 
     public override EventQueue ConversationEvents { get { return _receiver.ReceiverEvents; } }
 
@@ -48,7 +48,7 @@ public class RTIConversationTask : RTIConversation
 
 
 
-    protected readonly Info _info;
+    protected readonly InfoLog _info;
 
     private CancellationTokenSource _startCanceller;
 
@@ -72,13 +72,13 @@ public class RTIConversationTask : RTIConversation
 
     private object _lockRTE = new object();
 
-    private EventCollection _receiverTaskEvents;
+    private EventProducerCollection _receiverTaskEvents;
 
-    protected RTIConversationTask(Info info, CancellationToken cancellation)
+    protected RTIConversationTask(InfoLog info, CancellationToken cancellation)
     {
         this._info = info;
         this._startCanceller = new CancellationTokenSource();
-        this._receiverTaskEvents = new EventCollection(info, "ConversationUpdatesReceiverTask Events");
+        this._receiverTaskEvents = new EventProducerCollection("ConversationUpdatesReceiverTask Events");
         this._cancellation = cancellation;
         this._receiver = new ConversationUpdatesReceiver(info);
 
@@ -94,7 +94,7 @@ public class RTIConversationTask : RTIConversation
         // Connect event handlers.
         receiverQueue.Connect<InputAudioTaskFinished>(HandleEvent);
         receiverQueue.Connect<FailedToConnect>(HandleEvent);
-        receiverQueue.Connect<MessageQueueStarted>(HandleEvent);
+        receiverQueue.Connect<EventMailboxStarted>(HandleEvent);
     }
 
     /// <summary>
@@ -451,7 +451,7 @@ public class RTIConversationTask : RTIConversation
         }
         catch (Exception ex)
         {
-            _info.ExceptionOccured(ex);
+            _info.Error("Conversation session failed.", ex);
             TaskExceptionOccurred(ex);
         }
     }
@@ -484,19 +484,26 @@ public class RTIConversationTask : RTIConversation
 
     private void InvokeReceiverTaskEvent<TMessage>(TMessage message)
     {
-        lock (_lockRTE)
+        try
         {
-            if (!_receiverTaskEvents.IsComplete)
+            lock (_lockRTE)
             {
-                _receiverTaskEvents.Invoke(message);
+                if (!_receiverTaskEvents.IsComplete)
+                {
+                    _receiverTaskEvents.Invoke(message);
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            _info.Warning("Exception while invoking receiver task event handlers.", ex);
         }
     }
 
     /// <summary>
-    /// Entry for <see cref="MessageQueueStarted"/> event notification.
+    /// Entry for <see cref="EventMailboxStarted"/> event notification.
     /// </summary>
-    private void HandleEvent(object? sender, MessageQueueStarted update)
+    private void HandleEvent(object? sender, EventMailboxStarted update)
     {
         StartNetworkConnectionTask();
     }
@@ -508,7 +515,7 @@ public class RTIConversationTask : RTIConversation
     {
         _receiver.FinishReceiver(); // This should start graceful shutdown.
         InternalCancelStopDisposeAll();
-        _receiver.CloseMessageQueue(); // The end.
+        _receiver.CloseMailbox(); // The end.
     }
 
     /// <summary>
@@ -517,13 +524,13 @@ public class RTIConversationTask : RTIConversation
     private void HandleEvent(object? sender, FailedToConnect update)
     {
         InternalCancelStopDisposeAll();
-        _receiver.CloseMessageQueue(); // The end.
+        _receiver.CloseMailbox(); // The end.
     }
     
     public void HandleEvent(object? sender, TaskExceptionOccured update)
     {
         Cancel();
-        _info.ExceptionOccured(update.Exception);
+        _info.Error("Conversation task failed.", update.Exception);
     }
 
     private void InternalCancelStopDisposeAll()

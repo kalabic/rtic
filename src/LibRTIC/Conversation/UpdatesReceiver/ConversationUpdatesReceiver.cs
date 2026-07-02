@@ -1,6 +1,6 @@
-﻿using OpenAI.Realtime;
+using OpenAI.Realtime;
 using LibRTIC.MiniTaskLib;
-using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 using System.Net.WebSockets;
 
 namespace LibRTIC.Conversation.UpdatesReceiver;
@@ -28,10 +28,10 @@ public class ConversationUpdatesReceiver : ConversationUpdatesDispatcher
     protected RealtimeSessionClient? _session = null;
 
 
-    public ConversationUpdatesReceiver(Info info)
+    public ConversationUpdatesReceiver(InfoLog info)
         : this(info, CancellationToken.None) { }
 
-    public ConversationUpdatesReceiver(Info info, CancellationToken cancellation)
+    public ConversationUpdatesReceiver(InfoLog info, CancellationToken cancellation)
         : base(info)
     {
         this._cancellation = new ConversationCancellation(cancellation);

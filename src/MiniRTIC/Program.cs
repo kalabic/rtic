@@ -1,4 +1,4 @@
-﻿//
+//
 // For testing purposes, program can be built with or without RUN_SYNC (start as 'void Main()' or 'async Task Main()').
 //
 
@@ -100,7 +100,7 @@ public partial class Program
         }
         catch (Exception ex)
         {
-            Output.Info.ExceptionOccured(ex);
+            Output.Info.Error("Unhandled exception in MiniRTIC.", ex);
         }
 
         conversation.Cancel();
@@ -118,7 +118,7 @@ public partial class Program
 
     private static void HandleEvent(object? s, TaskExceptionOccured update)
     {
-        Output.Info.ExceptionOccured(update.Exception);
+        Output.Info.Error("Conversation task exception.", update.Exception);
     }
 
     private static void HandleEvent(object? s, ClientStartedConnecting update)

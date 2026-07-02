@@ -1,4 +1,4 @@
-﻿//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 // Filename: Program.cs
 //
 // Description: An example SIP server program to accept and initiate calls.
@@ -29,7 +29,6 @@ using SIPSorcery.SIP.App;
 using SIPSorcery.Sys;
 using SIPSorceryMedia.Abstractions;
 using LibRTIC.MiniTaskLib;
-using LibRTIC.MiniTaskLib.Base;
 
 namespace MiniRTICallServer
 {

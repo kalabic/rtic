@@ -1,4 +1,4 @@
-﻿using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 
 namespace LibRTIC.MiniTaskLib;
 
@@ -6,13 +6,13 @@ public class AsyncActionTask : TaskWithEvents
 {
     private Func<CancellationToken, Task> _action;
 
-    public AsyncActionTask(Info info, Func<CancellationToken, Task> action)
+    public AsyncActionTask(InfoLog info, Func<CancellationToken, Task> action)
         : base(info)
     {
         this._action = action;
     }
 
-    public AsyncActionTask(Info info, Func<CancellationToken, Task> action, CancellationToken cancellation)
+    public AsyncActionTask(InfoLog info, Func<CancellationToken, Task> action, CancellationToken cancellation)
         : base(info, cancellation)
     {
         this._action = action;

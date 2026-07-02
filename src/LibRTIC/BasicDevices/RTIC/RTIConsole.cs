@@ -1,4 +1,5 @@
-﻿using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
+using System.Diagnostics.Tracing;
 
 namespace LibRTIC.BasicDevices.RTIC;
 
@@ -9,13 +10,13 @@ public class RTIConsole
     : IRTIStateCollection
     , IRTOutput
     , ISessionEventProcessor
-    , ISystemConsole
+    , ITextConsole
 {
     public event EventHandler<RTIConsoleStateId>? StateUpdate;
 
     public IRTSessionEvents Event { get { return _sessionEventProxy; } }
 
-    public Info Info { get { return _consoleNotification; } }
+    public InfoLog Info { get { return _consoleInfo; } }
 
     public IRTIConsoleState State_CurrentState { get { return _currentState; } }
 
@@ -32,7 +33,7 @@ public class RTIConsole
 
     protected object _locker = new object();
 
-    protected ConsoleNotification _consoleNotification;
+    protected InfoLog _consoleInfo;
 
     protected IRTIConsoleState? _fixedState = null;
 
@@ -55,9 +56,9 @@ public class RTIConsole
                       RTIConsoleStateBase answering,
                       RTIConsoleStateBase waitingItem,
                       RTIConsoleStateBase writingItem,
-                      ISystemConsole? cout = null)
+                      ITextConsole? cout = null)
     {
-        _consoleNotification = new(this);
+        _consoleInfo = new ConsoleInfo(this, EventLevel.Verbose);
         _inactive = inactive;
         _connecting = connecting;
         _answering = answering;
@@ -144,12 +145,12 @@ public class RTIConsole
     }
 
     //
-    // ISystemConsole
+    // ITextConsole
     //
 
     public void SetCursorLeft(int value)
     {
-        throw new NotImplementedException();
+        // RTIConsole formats text through its current state; cursor movement is handled by the underlying output target.
     }
 
     public void Write(string? message)

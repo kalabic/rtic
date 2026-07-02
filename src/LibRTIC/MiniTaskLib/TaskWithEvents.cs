@@ -1,6 +1,6 @@
-﻿using LibRTIC.MiniTaskLib.Base;
+using LibRTIC.MiniTaskLib.Base;
 using LibRTIC.MiniTaskLib.Events;
-using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 
 namespace LibRTIC.MiniTaskLib;
 
@@ -8,19 +8,19 @@ public abstract class TaskWithEvents : TaskBase
 {
     private bool _disposed = false;
 
-    public EventCollection TaskEvents { get { return _taskEvents; } }
+    public EventProducerCollection TaskEvents { get { return _taskEvents; } }
 
     public string TaskLabel { get { return _label; } }
 
 
 
-    protected Info _info;
+    protected InfoLog _info;
 
     private object _lock = new object();
 
     private string _label = "";
 
-    private EventCollection _taskEvents;
+    private EventProducerCollection _taskEvents;
 
     private CancellationTokenSource _cancellationTokenSource;
 
@@ -28,21 +28,21 @@ public abstract class TaskWithEvents : TaskBase
 
     private Task? _taskContinueAction = null;
 
-    public TaskWithEvents(Info info)
+    public TaskWithEvents(InfoLog info)
         : this(info, new CancellationTokenSource())
     { }
 
-    public TaskWithEvents(Info info, CancellationToken cancellation)
+    public TaskWithEvents(InfoLog info, CancellationToken cancellation)
         : this(info, CancellationTokenSource.CreateLinkedTokenSource(cancellation))
     { }
 
-    private TaskWithEvents(Info info, CancellationTokenSource cancellation)
+    private TaskWithEvents(InfoLog info, CancellationTokenSource cancellation)
         // TODO: Still considering that CancellationToken.None might be better for base class. WIP
         : base(cancellation.Token, TaskCreationOptions.LongRunning)
     {
         _info = info;
         _cancellationTokenSource = cancellation;
-        _taskEvents = new(info, "TaskWithEvents Events");
+        _taskEvents = new("TaskWithEvents Events");
         _taskEvents.EnableInvokeFor<TaskExceptionOccured>();
         _taskEvents.EnableInvokeFor<TaskCancelled>();
         _taskEvents.EnableInvokeFor<TaskCompleted>();
@@ -121,11 +121,11 @@ public abstract class TaskWithEvents : TaskBase
             }
             catch (OperationCanceledException ex)
             {
-                _info.ExceptionOccured(ex);
+                _info.Info("Stop task canceled while waiting for " + _label, ex);
             }
             catch (AggregateException ex)
             {
-                _info.ExceptionOccured(ex);
+                _info.Warning("Stop task failed while waiting for " + _label, ex);
             }
         }, stopActionCancellation);
         stopTask.Start();
@@ -186,12 +186,19 @@ public abstract class TaskWithEvents : TaskBase
 
     private void InvokeTaskEvent<TMessage>(TMessage message)
     {
-        lock (_lock)
+        try
         {
-            if (!_taskEvents.IsComplete)
+            lock (_lock)
             {
-                _taskEvents.Invoke<TMessage>(message);
+                if (!_taskEvents.IsComplete)
+                {
+                    _taskEvents.Invoke<TMessage>(message);
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            _info.Warning("Exception while invoking task event handlers.", ex);
         }
     }
 
@@ -199,7 +206,7 @@ public abstract class TaskWithEvents : TaskBase
 
     virtual protected void NotifyExceptionOccurred(Exception ex)
     {
-        _info.ExceptionOccured(ex);
+        _info.Error("Task failed: " + _label, ex);
         InvokeTaskEvent(new TaskExceptionOccured(ex));
     }
 }

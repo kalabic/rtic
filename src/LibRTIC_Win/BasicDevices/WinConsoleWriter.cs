@@ -1,29 +1,28 @@
-﻿using LibRTIC.BasicDevices.RTIC.CmdLineStates;
+using LibRTIC.BasicDevices.RTIC.CmdLineStates;
 using LibRTIC.BasicDevices.RTIC;
-using LibRTIC.BasicDevices;
-using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 
 namespace LibRTIC_Win.BasicDevices;
 
 public class WinConsoleWriter : IRTOutput
 {
-    public SystemConsole SystemConsole { get { return _sysConsole; } }
+    public LiteConsole LiteConsole { get { return _liteConsole; } }
 
     public IRTSessionEvents Event { get { return _mainConsole.Event; } }
 
-    public Info Info { get { return _mainConsole.Info; } }
+    public InfoLog Info { get { return _mainConsole.Info; } }
 
 
 
-    private SystemConsole _sysConsole;
+    private LiteConsole _liteConsole;
 
     private RTIConsole _mainConsole;
 
 
     public WinConsoleWriter()
     {
-        _sysConsole = new();
-        _mainConsole = RTICmdLineConsole.New(_sysConsole);
+        _liteConsole = new();
+        _mainConsole = RTICmdLineConsole.New(_liteConsole);
     }
 
     public void AddStateEventHandler(EventHandler<RTIConsoleStateId> stateUpdate)

@@ -4,7 +4,7 @@ using OpenAI.Realtime;
 using OpenAI;
 using System.ClientModel;
 using System.ClientModel.Primitives;
-using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 
 namespace LibRTIC.Config;
 
@@ -15,7 +15,7 @@ public class ConfiguredClient
 {
     public const string DEFAULT_API_FILENAME = "rtic_api.json";
 
-    public static RealtimeClient? FromOptions(Info info, ClientApiConfig options)
+    public static RealtimeClient? FromOptions(InfoLog info, ClientApiConfig options)
     {
         switch (options.Type)
         {

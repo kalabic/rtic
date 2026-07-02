@@ -1,18 +1,18 @@
-﻿using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 using System.Text.Json.Nodes;
 
 namespace LibRTIC.Config;
 
 public class ClientApiConfigReader : ClientApiConfig
 {
-    static public ClientApiConfigReader FromFileOrEnvironment(Info info, string path)
+    static public ClientApiConfigReader FromFileOrEnvironment(InfoLog info, string path)
     {
         ClientApiConfigReader options = new ClientApiConfigReader(info);
         options.fromFileOrEnvironment(path);
         return options;
     }
 
-    static public ClientApiConfigReader FromFile(Info info, string path)
+    static public ClientApiConfigReader FromFile(InfoLog info, string path)
     {
         ClientApiConfigReader options = new ClientApiConfigReader(info);
         options.fromFileJson(path);
@@ -21,7 +21,7 @@ public class ClientApiConfigReader : ClientApiConfig
 
     private static ReadOnlySpan<byte> Utf8Bom => new byte[] { 0xEF, 0xBB, 0xBF };
 
-    static public JsonNode? GetRootJsonNode(Info info, string filePath)
+    static public JsonNode? GetRootJsonNode(InfoLog info, string filePath)
     {
         try
         {
@@ -47,9 +47,9 @@ public class ClientApiConfigReader : ClientApiConfig
         }
     }
 
-    protected Info _info;
+    protected InfoLog _info;
 
-    public ClientApiConfigReader(Info info)
+    public ClientApiConfigReader(InfoLog info)
     {
         this._info = info;
     }

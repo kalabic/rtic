@@ -1,4 +1,5 @@
-﻿using LibRTIC.MiniTaskLib;
+﻿using DotBase.Event;
+using LibRTIC.MiniTaskLib;
 
 namespace LibRTIC.Conversation.UpdatesReceiver;
 
@@ -6,9 +7,9 @@ public class ReplaceAndForward<TMessage, TArgument> where TMessage : new()
 {
     private EventContainer<TMessage>? _event;
 
-    public ReplaceAndForward(EventCollection eventCollection, EventQueue eventQueue)
+    public ReplaceAndForward(EventProducerCollection sourceEvents, EventQueue eventQueue)
     {
-        _event = eventQueue.ForwardFrom<TMessage>(eventCollection);
+        _event = eventQueue.ForwardFrom<TMessage>(sourceEvents);
     }
 
     public void ProcessNew()

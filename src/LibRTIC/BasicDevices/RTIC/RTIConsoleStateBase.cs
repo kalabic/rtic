@@ -1,4 +1,6 @@
-﻿namespace LibRTIC.BasicDevices.RTIC;
+using DotBase.Log;
+
+namespace LibRTIC.BasicDevices.RTIC;
 
 public abstract class RTIConsoleStateBase : IRTIConsoleState
 {
@@ -6,7 +8,7 @@ public abstract class RTIConsoleStateBase : IRTIConsoleState
 
     private object _locker = new();
 
-    public void SetCOut(ISystemConsole? cout) 
+    public void SetCOut(ITextConsole? cout)
     { 
         lock (_locker) 
         { 
@@ -14,9 +16,9 @@ public abstract class RTIConsoleStateBase : IRTIConsoleState
         } 
     }
 
-    private ISystemConsole? _cout = null;
+    private ITextConsole? _cout = null;
 
-    protected RTIConsoleStateBase(ISystemConsole? cout)
+    protected RTIConsoleStateBase(ITextConsole? cout)
     {
         this._cout = cout;
     }

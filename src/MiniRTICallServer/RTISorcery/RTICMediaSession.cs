@@ -1,8 +1,8 @@
-﻿using Microsoft.Extensions.Logging;
-using MiniRTICallServer.RTISorcery.RTICallSessionConsole;
 using LibRTIC.Config;
 using LibRTIC.Conversation;
 using LibRTIC.MiniTaskLib.Events;
+using Microsoft.Extensions.Logging;
+using MiniRTICallServer.RTISorcery.RTICallSessionConsole;
 using SIPSorcery;
 using SIPSorcery.Media;
 using SIPSorcery.SIP;

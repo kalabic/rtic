@@ -1,11 +1,13 @@
-﻿namespace LibRTIC.BasicDevices.RTIC.CmdLineStates;
+﻿using DotBase.Log;
+
+namespace LibRTIC.BasicDevices.RTIC.CmdLineStates;
 
 public class RTICmdLineState_WaitingItem : RTIConsoleStateWithTimer
 {
     public override RTIConsoleStateId State { get { return RTIConsoleStateId.WaitingItem; } }
 
 
-    public RTICmdLineState_WaitingItem(ISystemConsole? cout = null)
+    public RTICmdLineState_WaitingItem(ITextConsole? cout = null)
         : base(cout)
     { }
 

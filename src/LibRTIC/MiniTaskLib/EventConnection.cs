@@ -1,82 +1,83 @@
-﻿namespace LibRTIC.MiniTaskLib;
+using DotBase.Core;
+using DotBase.Event;
 
-public abstract class EventConnectionInstance : IDisposable
+namespace LibRTIC.MiniTaskLib;
+
+internal abstract class EventConnectionBase : DisposableBase
 {
-    public abstract void Dispose();
+
+    protected EventConnectionBase()
+    {
+    }
 }
 
-public abstract class EventConnection<TMessage> : EventConnectionInstance
+internal abstract class EventConnection<TMessage> : EventConnectionBase
 {
-    protected EventContainer<TMessage>? _item;
+    protected EventContainer<TMessage>? _sourceEvent;
 
-    public EventConnection(EventContainer<TMessage> item)
+    protected EventConnection(EventContainer<TMessage> sourceEvent)
     {
-        this._item = item;
+        _sourceEvent = sourceEvent;
     }
 
-    public override void Dispose()
+    protected override void Dispose(bool disposing)
     {
-        Dispose(true);
-    }
-
-    protected void Dispose(bool disposing)
-    {
-        // Release managed resources.
         if (disposing)
         {
             Disconnect();
-            _item = null;
+            _sourceEvent = null;
         }
-        // Release unmanaged resources.
+
+        base.Dispose(disposing);
     }
 
     protected abstract void Disconnect();
 }
 
-public class EventHandlerConnection<TMessage> : EventConnection<TMessage>
+internal sealed class EventHandlerConnection<TMessage> : EventConnection<TMessage>
 {
-    EventHandler<TMessage> _otherHandler;
+    private readonly EventHandler<TMessage> _handler;
 
-    public EventHandlerConnection(EventContainer<TMessage> item, EventHandler<TMessage> otherHandler)
-        : base(item)
+    public EventHandlerConnection(EventContainer<TMessage> sourceEvent, EventHandler<TMessage> handler)
+        : base(sourceEvent)
     {
-        this._otherHandler = otherHandler;
+        _handler = handler;
     }
 
     protected override void Disconnect()
     {
-        _item?.DisconnectEventHandler(_otherHandler);
+        _sourceEvent?.RemoveHandler(_handler);
     }
 }
 
-public class EventAsyncConnection<TMessage> : EventConnection<TMessage>
+internal sealed class AsyncHandlerConnection<TMessage> : EventConnection<TMessage>
 {
-    EventHandler<TMessage> _otherHandler;
+    private readonly EventHandler<TMessage> _handler;
 
-    public EventAsyncConnection(EventContainer<TMessage> item, EventHandler<TMessage> otherHandler)
-        : base(item)
+    public AsyncHandlerConnection(EventContainer<TMessage> sourceEvent, EventHandler<TMessage> handler)
+        : base(sourceEvent)
     {
-        this._otherHandler = otherHandler;
+        _handler = handler;
     }
 
     protected override void Disconnect()
     {
-        _item?.DisconnectEventHandlerAsync(_otherHandler);
+        _sourceEvent?.RemoveHandlerAsync(_handler);
     }
 }
 
-public class EventContainerConnection<TMessage> : EventConnection<TMessage>
+internal sealed class EventForwardingConnection<TMessage> : EventConnection<TMessage>
 {
-    EventContainer<TMessage> _otherContainer;
+    private readonly EventContainer<TMessage> _targetEvent;
 
-    public EventContainerConnection(EventContainer<TMessage> item, EventContainer<TMessage> otherContainer)
-        : base(item)
+    public EventForwardingConnection(EventContainer<TMessage> sourceEvent, EventContainer<TMessage> targetEvent)
+        : base(sourceEvent)
     {
-        this._otherContainer = otherContainer;
+        _targetEvent = targetEvent;
     }
 
     protected override void Disconnect()
     {
-        _item?.DisconnectEventHandler(_otherContainer);
+        _sourceEvent?.Disconnect(_targetEvent);
     }
 }

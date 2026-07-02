@@ -1,12 +1,12 @@
 ﻿using System.Text.Json.Nodes;
 using System.Text.Json;
-using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 
 namespace LibRTIC.Config;
 
 public class ValueParser
 {
-    static public int AssertNodeParamIsNullOrArray(Info info, JsonNode node, string paramName)
+    static public int AssertNodeParamIsNullOrArray(InfoLog info, JsonNode node, string paramName)
     {
         var paramNode = node![paramName]!;
         if ((paramNode is null) || (paramNode.GetValueKind() == JsonValueKind.Undefined))
@@ -23,7 +23,7 @@ public class ValueParser
         return -1;
     }
 
-    static public int AssertNodeParamIsNullOrObject(Info info, JsonNode node, string paramName)
+    static public int AssertNodeParamIsNullOrObject(InfoLog info, JsonNode node, string paramName)
     {
         var paramNode = node![paramName]!;
         if ((paramNode is null) || (paramNode.GetValueKind() == JsonValueKind.Undefined))
@@ -40,7 +40,7 @@ public class ValueParser
         return -1;
     }
 
-    static public int AssertNodeParamIsNullOrString(Info info, JsonNode node, string paramName)
+    static public int AssertNodeParamIsNullOrString(InfoLog info, JsonNode node, string paramName)
     {
         var paramNode = node![paramName]!;
         if ((paramNode is null) || (paramNode.GetValueKind() == JsonValueKind.Undefined))
@@ -57,7 +57,7 @@ public class ValueParser
         return -1;
     }
 
-    static public int AssertReadNodeStringParam(Info info, JsonNode node, string paramName, Action<string> reader)
+    static public int AssertReadNodeStringParam(InfoLog info, JsonNode node, string paramName, Action<string> reader)
     {
         int assert = AssertNodeParamIsNullOrString(info, node, paramName);
         if (assert == 1)
@@ -67,7 +67,7 @@ public class ValueParser
         return assert;
     }
 
-    static public int AssertReadNodeStringParam(Info info, JsonNode node, string paramName, Func<string, int> reader)
+    static public int AssertReadNodeStringParam(InfoLog info, JsonNode node, string paramName, Func<string, int> reader)
     {
         int assert = AssertNodeParamIsNullOrString(info, node, paramName);
         if (assert == 1)
@@ -77,7 +77,7 @@ public class ValueParser
         return assert;
     }
 
-    static public int AssertNodeParamIsNullOrBool(Info info, JsonNode node, string paramName)
+    static public int AssertNodeParamIsNullOrBool(InfoLog info, JsonNode node, string paramName)
     {
         var paramNode = node![paramName]!;
         if ((paramNode is null) || (paramNode.GetValueKind() == JsonValueKind.Undefined))
@@ -94,13 +94,13 @@ public class ValueParser
         return -1;
     }
 
-    static public int AssertReadNodeBoolParam(Info info, JsonNode node, string paramName, Action<bool> reader)
+    static public int AssertReadNodeBoolParam(InfoLog info, JsonNode node, string paramName, Action<bool> reader)
     {
         Func<bool, int> defaultAction = (value) => { reader(value); return 1; };
         return AssertReadNodeBoolParam(info, node, paramName, defaultAction);
     }
 
-    static public int AssertReadNodeBoolParam(Info info, JsonNode node, string paramName, Func<bool, int> reader)
+    static public int AssertReadNodeBoolParam(InfoLog info, JsonNode node, string paramName, Func<bool, int> reader)
     {
         int assert = AssertNodeParamIsNullOrBool(info, node, paramName);
         if (assert == 1)
@@ -110,7 +110,7 @@ public class ValueParser
         return assert;
     }
 
-    static public int AssertNodeParamIsNullOrNumber(Info info, JsonNode node, string paramName)
+    static public int AssertNodeParamIsNullOrNumber(InfoLog info, JsonNode node, string paramName)
     {
         var paramNode = node![paramName]!;
         if ((paramNode is null) || (paramNode.GetValueKind() == JsonValueKind.Undefined))
@@ -127,13 +127,13 @@ public class ValueParser
         return -1;
     }
 
-    static public int AssertReadNodeFloatParamInRange(Info info, JsonNode node, string paramName, float minValue, float maxValue, Action<float> reader)
+    static public int AssertReadNodeFloatParamInRange(InfoLog info, JsonNode node, string paramName, float minValue, float maxValue, Action<float> reader)
     {
         Func<float, int> defaultAction = (value) => { reader(value); return 1; };
         return AssertReadNodeFloatParamInRange(info, node, paramName, minValue, maxValue, defaultAction);
     }
 
-    static public int AssertReadNodeFloatParamInRange(Info info, JsonNode node, string paramName, float minValue, float maxValue, Func<float, int> reader)
+    static public int AssertReadNodeFloatParamInRange(InfoLog info, JsonNode node, string paramName, float minValue, float maxValue, Func<float, int> reader)
     {
         int assert = AssertNodeParamIsNullOrNumber(info, node, paramName);
         if (assert == 1)
@@ -159,13 +159,13 @@ public class ValueParser
         return assert;
     }
 
-    static public int AssertReadNodeIntParamInRange(Info info, JsonNode node, string paramName, int minValue, int maxValue, Action<int> reader)
+    static public int AssertReadNodeIntParamInRange(InfoLog info, JsonNode node, string paramName, int minValue, int maxValue, Action<int> reader)
     {
         Func<int, int> defaultAction = (value) => { reader(value); return 1; };
         return AssertReadNodeIntParamInRange(info, node, paramName, minValue, maxValue, defaultAction);
     }
 
-    static public int AssertReadNodeIntParamInRange(Info info, JsonNode node, string paramName, int minValue, int maxValue, Func<int, int> reader)
+    static public int AssertReadNodeIntParamInRange(InfoLog info, JsonNode node, string paramName, int minValue, int maxValue, Func<int, int> reader)
     {
         int assert = AssertNodeParamIsNullOrNumber(info, node, paramName);
         if (assert == 1)

@@ -1,44 +1,40 @@
 ﻿using Microsoft.Extensions.Logging;
-using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 
 namespace MiniRTICallServer.RTISorcery;
 
-public class RTICAudioEndPointInfo : Info
+public class RTICAudioEndPointInfo : InfoLog
 {
-    private ILogger _logger;
+    private readonly ILogger _logger;
 
     public RTICAudioEndPointInfo(ILogger logger)
     {
         _logger = logger;
     }
 
-    public void Error(string errorMessage)
-    {
-        _logger.LogError(errorMessage);
-    }
+    public void Critical(string message) => _logger.LogCritical(message);
 
-    public void ExceptionOccured(Exception ex)
-    {
-        _logger.LogError($"Error occured: {ex.Message}");
-    }
+    public void Critical(string message, Exception ex) => _logger.LogCritical(ex, message);
 
-    public void Info(string infoMessage)
-    {
-        _logger.LogInformation(infoMessage);
-    }
+    public void Error(string message) => _logger.LogError(message);
 
-    public void ObjectDisposed(string label)
-    {
-        _logger.LogDebug("Object disposed: " + label);
-    }
+    public void Error(string message, Exception ex) => _logger.LogError(ex, message);
 
-    public void ObjectDisposed(object obj)
-    {
-        _logger.LogDebug("Object disposed: " + obj.GetType().ToString());
-    }
+    public void Event(string eventType, string message) =>
+        _logger.LogDebug("{EventType}: {Message}", eventType, message);
 
-    public void TaskFinished(string label, object obj)
-    {
-        _logger.LogDebug("Task finished: " + label);
-    }
+    public void Event(string eventType, string message, object obj) =>
+        _logger.LogDebug("{EventType}: {Message}; {ObjectType}", eventType, message, obj?.GetType().ToString() ?? "<null object>");
+
+    public void Info(string message) => _logger.LogInformation(message);
+
+    public void Info(string message, Exception ex) => _logger.LogInformation(ex, message);
+
+    public void Notice(string message) => _logger.LogInformation(message);
+
+    public void Notice(string message, Exception ex) => _logger.LogInformation(ex, message);
+
+    public void Warning(string message) => _logger.LogWarning(message);
+
+    public void Warning(string message, Exception ex) => _logger.LogWarning(ex, message);
 }

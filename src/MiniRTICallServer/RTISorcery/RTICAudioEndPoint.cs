@@ -129,7 +129,7 @@ public class RTICAudioEndPoint : IAudioSource, IAudioSink, IDisposable
         _sinkResampler?.Dispose();
     }
 
-    public void ConnectToConversation(EventCollection conversationEvents, RTICallConsole callConsole)
+    public void ConnectToConversation(EventProducerCollection conversationEvents, RTICallConsole callConsole)
     {
         conversationEvents.Connect<ConversationResponseStarted>(HandleEvent);
         conversationEvents.Connect<ConversationResponseFinished>(HandleEvent);

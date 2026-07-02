@@ -4,7 +4,7 @@ using AudioFormatLib.IO;
 using LibRTIC.BasicDevices;
 using LibRTIC.Conversation;
 using LibRTIC.MiniTaskLib;
-using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 using MiniRTICallServer.RTISorcery.RTICallSessionConsole;
 
 namespace MiniRTICallServer.RTISorcery;
@@ -30,7 +30,7 @@ public class RTICallAudio : RTIConsoleAudio
 
     private AudioStreamBuffer _responseBuffer;
 
-    public RTICallAudio(Info info, AFrameFormat audioFormat)
+    public RTICallAudio(InfoLog info, AFrameFormat audioFormat)
         : base(info, audioFormat, CancellationToken.None)
     {
         ABufferParams speechBP = new ABufferParams(audioFormat);
@@ -53,7 +53,7 @@ public class RTICallAudio : RTIConsoleAudio
         base.Dispose(disposing);
     }
 
-    public void ConnectToConversation(EventCollection conversationEvents, RTICallConsole callConsole)
+    public void ConnectToConversation(EventProducerCollection conversationEvents, RTICallConsole callConsole)
     {
         conversationEvents.Connect<ConversationInputSpeechStarted>(HandleEvent);
         conversationEvents.Connect<ConversationInputSpeechFinished>(HandleEvent);

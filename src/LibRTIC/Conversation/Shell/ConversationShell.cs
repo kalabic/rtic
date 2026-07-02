@@ -1,8 +1,8 @@
-﻿using OpenAI.Realtime;
+using OpenAI.Realtime;
 using LibRTIC.Config;
 using LibRTIC.Conversation.Devices;
 using LibRTIC.MiniTaskLib;
-using LibRTIC.MiniTaskLib.Model;
+using DotBase.Log;
 using System.Diagnostics;
 
 namespace LibRTIC.Conversation.Shell;
@@ -14,7 +14,7 @@ namespace LibRTIC.Conversation.Shell;
 /// </summary>
 public abstract class ConversationShell : IDisposable
 {
-    protected Info _info;
+    protected InfoLog _info;
 
     protected readonly RTIConversation _updatesReceiverTask;
 
@@ -27,7 +27,7 @@ public abstract class ConversationShell : IDisposable
 
     private int _nextLocalItemId = 1;
 
-    protected ConversationShell(Info info,
+    protected ConversationShell(InfoLog info,
                                 IConversationDevices devices,
                                 RealtimeClient client,
                                 CancellationToken cancellation)
@@ -41,7 +41,7 @@ public abstract class ConversationShell : IDisposable
         ConnectConversationUpdateHandlers();
     }
 
-    protected ConversationShell(Info info,
+    protected ConversationShell(InfoLog info,
                                 IConversationDevices devices,
                                 RTICConfig options,
                                 CancellationToken cancellation)

@@ -1,11 +1,13 @@
-﻿namespace LibRTIC.BasicDevices.RTIC.CmdLineStates;
+﻿using DotBase.Log;
+
+namespace LibRTIC.BasicDevices.RTIC.CmdLineStates;
 
 public class RTICmdLineState_Inactive : RTIConsoleStateBase
 {
     public override RTIConsoleStateId State { get { return RTIConsoleStateId.Inactive; } }
 
 
-    public RTICmdLineState_Inactive(ISystemConsole? cout = null)
+    public RTICmdLineState_Inactive(ITextConsole? cout = null)
         : base(cout)
     { }
 

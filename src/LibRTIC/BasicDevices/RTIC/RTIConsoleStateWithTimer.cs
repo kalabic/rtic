@@ -1,4 +1,5 @@
-﻿using Timer = System.Timers.Timer;
+using Timer = System.Timers.Timer;
+using DotBase.Log;
 
 namespace LibRTIC.BasicDevices.RTIC;
 
@@ -9,7 +10,7 @@ public abstract class RTIConsoleStateWithTimer : RTIConsoleStateBase
         : this(null)
     { }
 
-    public RTIConsoleStateWithTimer(ISystemConsole? cout)
+    public RTIConsoleStateWithTimer(ITextConsole? cout)
         : base(cout)
     {
         _timer = new();
