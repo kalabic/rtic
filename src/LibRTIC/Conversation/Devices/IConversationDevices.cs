@@ -1,8 +1,9 @@
 ﻿using AudioFormatLib.IO;
+using DotBase.Event;
 using LibRTIC.Conversation.Shell;
-using LibRTIC.MiniTaskLib;
 
 namespace LibRTIC.Conversation.Devices;
+
 
 public interface IConversationDevices : IDisposable
 {

@@ -16,7 +16,7 @@ namespace MiniRTIC;
 /// A Minimum viable RealTime Interactive Console for connecting to OpenAI's realtime API.
 /// <para>Please provide one of following in your environment variables:</para>
 /// <list type = "bullet">
-///   <item>AZURE_OPENAI_ENDPOINT with AZURE_OPENAI_USE_ENTRA=true or AZURE_OPENAI_API_KEY</item>
+///   <item>AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_DEPLOYMENT with AZURE_OPENAI_USE_ENTRA=true or AZURE_OPENAI_API_KEY</item>
 ///   <item>OPENAI_API_KEY</item>
 /// </list>
 /// </summary>

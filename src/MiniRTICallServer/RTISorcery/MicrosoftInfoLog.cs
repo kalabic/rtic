@@ -3,11 +3,11 @@ using DotBase.Log;
 
 namespace MiniRTICallServer.RTISorcery;
 
-public class RTICAudioEndPointInfo : InfoLog
+internal sealed class MicrosoftInfoLog : InfoLog
 {
     private readonly ILogger _logger;
 
-    public RTICAudioEndPointInfo(ILogger logger)
+    public MicrosoftInfoLog(ILogger logger)
     {
         _logger = logger;
     }

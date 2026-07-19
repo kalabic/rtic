@@ -29,20 +29,6 @@ public abstract class ConversationShell : IDisposable
 
     protected ConversationShell(InfoLog info,
                                 IConversationDevices devices,
-                                RealtimeClient client,
-                                CancellationToken cancellation)
-    {
-        this._info = info;
-        this._devices = devices;
-        _updatesReceiverTask = RTIConversationTask.Create(info, cancellation);
-        _updatesReceiverTask.ConfigureWith(client, _devices.GetAudioOutput());
-
-        ConnectDeviceEventHandlers();
-        ConnectConversationUpdateHandlers();
-    }
-
-    protected ConversationShell(InfoLog info,
-                                IConversationDevices devices,
                                 RTICConfig options,
                                 CancellationToken cancellation)
     {

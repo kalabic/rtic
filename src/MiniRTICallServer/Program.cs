@@ -19,7 +19,6 @@ using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using MiniRTICallServer.RTISorcery;
-using LibRTIC.Config;
 using Serilog;
 using Serilog.Extensions.Logging;
 using SIPSorcery.Media;
@@ -29,6 +28,7 @@ using SIPSorcery.SIP.App;
 using SIPSorcery.Sys;
 using SIPSorceryMedia.Abstractions;
 using LibRTIC.MiniTaskLib;
+using SIP2Agent.UserAgentService.Service;
 
 namespace MiniRTICallServer
 {
@@ -92,6 +92,12 @@ namespace MiniRTICallServer
         /// </summary>
         private static ConcurrentDictionary<string, SIPUserAgent> _calls = new ConcurrentDictionary<string, SIPUserAgent>();
 
+        private static InboundCallRegistry _incomingCalls = null!;
+
+        private static readonly CancellationTokenSource _applicationShutdown = new();
+
+        private static int _isShuttingDown;
+
         /// <summary>
         /// Keeps track of the SIP account registrations.
         /// </summary>
@@ -122,6 +128,7 @@ namespace MiniRTICallServer
             }
 
             Log = AddConsoleLogger();
+            _incomingCalls = new InboundCallRegistry(Log);
 
             // Set up a default SIP transport.
             _sipTransport = new SIPTransport();
@@ -178,6 +185,8 @@ namespace MiniRTICallServer
             }
 
             Log.LogInformation("Exiting...");
+
+            await ShutdownIncomingRTICCallsAsync();
 
             if (_sipTransport != null)
             {
@@ -359,8 +368,6 @@ namespace MiniRTICallServer
         {
             Log.LogDebug($" >>> TaskWithEvents.UNDISPOSED_COUNT: {TaskWithEvents.UNDISPOSED_COUNT}");
             Log.LogDebug($" >>> TaskWithEvents.INSTANCE_COUNT: {TaskWithEvents.INSTANCE_COUNT}");
-            Log.LogDebug($" >>> EventProducerCollection.UNDISPOSED_COUNT: {EventProducerCollection.UNDISPOSED_COUNT}");
-            Log.LogDebug($" >>> EventProducerCollection.INSTANCE_COUNT: {EventProducerCollection.INSTANCE_COUNT}");
         }
 #endif
 
@@ -407,39 +414,36 @@ namespace MiniRTICallServer
             return rtpAudioSession;
         }
 
-        /// <summary>
-        /// Example of how to create a basic RTP session object and hook up the event handlers.
-        /// </summary>
-        /// <param name="ua">The user agent the RTP session is being created for.</param>
-        /// <param name="dst">THe destination specified on an incoming call. Can be used to
-        /// set the audio source.</param>
-        /// <returns>A new RTP session object.</returns>
-        private static VoIPMediaSession CreateRTICRtpSession(RTICConfig? conversationOptions, SIPUserAgent ua, SIPServerUserAgent uas)
+        private static async Task ShutdownIncomingRTICCallsAsync()
         {
-            var rtpAudioSession = RTICMediaSession.New(ua, uas, conversationOptions);
-            rtpAudioSession.AcceptRtpFromAny = true;
+            Volatile.Write(ref _isShuttingDown, 1);
+            TrackedInboundCall[] calls = _incomingCalls.StopAcceptingAndSnapshot();
 
-            // Wire up the event handler for RTP packets received from the remote party.
-            rtpAudioSession.OnRtpPacketReceived += (ep, type, rtp) => OnRtpPacketReceived(ua, ep, type, rtp);
-            rtpAudioSession.OnTimeout += (mediaType) =>
+            foreach (TrackedInboundCall tracked in calls)
             {
-                if (ua?.Dialogue != null)
+                tracked.Session.RequestStop(CallTerminationReason.ApplicationShutdown);
+                if (tracked.Session.IsCallActive)
                 {
-                    Log.LogWarning($"RTP timeout on call with {ua.Dialogue.RemoteTarget}, hanging up.");
+                    tracked.Session.Hangup();
                 }
-                else
-                {
-                    Log.LogWarning($"RTP timeout on incomplete call, closing RTP session.");
-                }
+            }
 
-                ua?.Hangup();
-            };
-            rtpAudioSession.OnStarted += () => 
-            { 
-                _calls.TryAdd(ua.Dialogue.CallId, ua);
-            };
+            _applicationShutdown.Cancel();
 
-            return rtpAudioSession;
+            if (calls.Length == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                await Task.WhenAll(calls.Select(call => call.RunTask))
+                    .WaitAsync(TimeSpan.FromSeconds(15));
+            }
+            catch (TimeoutException)
+            {
+                Log.LogError("Timed out waiting for {CallCount} incoming RTIC calls to stop.", calls.Length);
+            }
         }
 
         /// <summary>
@@ -484,20 +488,64 @@ namespace MiniRTICallServer
                 {
                     Log.LogInformation($"Incoming call request: {localSIPEndPoint}<-{remoteEndPoint} {sipRequest.URI}.");
 
-                    SIPUserAgent ua = new SIPUserAgent(_sipTransport, null);
-                    ua.OnCallHungup += OnHangup;
-                    ua.ServerCallCancelled += (uas, cancelReq) => Log.LogDebug("Incoming call cancelled by remote party.");
-                    ua.OnDtmfTone += (key, duration) => OnDtmfTone(ua, key, duration);
-                    ua.OnRtpEvent += (evt, hdr) => Log.LogDebug($"rtp event {evt.EventID}, duration {evt.Duration}, end of event {evt.EndOfEvent}, timestamp {hdr.Timestamp}, marker {hdr.MarkerBit}.");
-                    //ua.OnTransactionTraceMessage += (tx, msg) => Log.LogDebug($"uas tx {tx.TransactionId}: {msg}");
-                    ua.ServerCallRingTimeout += (uas) =>
+                    if (Volatile.Read(ref _isShuttingDown) != 0)
                     {
-                        Log.LogWarning($"Incoming call timed out in {uas.ClientTransaction.TransactionState} state waiting for client ACK, terminating.");
-                        ua.Hangup();
-                    };
+                        SIPResponse unavailableResponse = SIPResponse.GetResponse(
+                            sipRequest,
+                            SIPResponseStatusCodesEnum.ServiceUnavailable,
+                            "Service Unavailable");
+                        await _sipTransport.SendResponseAsync(unavailableResponse);
+                        return;
+                    }
 
-                    var uas = ua.AcceptCall(sipRequest);
-                    CreateRTICRtpSession(null, ua, uas);
+                    CallSession call;
+                    try
+                    {
+                        call = CallSession.CreateInbound(
+                            _sipTransport,
+                            Log,
+                            sipRequest,
+                            () =>
+                            {
+                                RTICCallAgent agent = RTICCallAgent.Create();
+                                agent.MediaSession.AcceptRtpFromAny = true;
+                                return agent;
+                            },
+                            _publicIPAddress,
+                            _applicationShutdown.Token,
+                            onAnswered: session => _calls.TryAdd(
+                                session.CallId,
+                                session.UserAgent),
+                            onStopped: session => _calls.TryRemove(
+                                session.CallId,
+                                out _));
+                    }
+                    catch (Exception exception)
+                    {
+                        Log.LogError(exception, "Failed to create RTIC media for incoming call.");
+                        return;
+                    }
+
+                    if (!_incomingCalls.TryStart(call, Log, out _))
+                    {
+                        bool shuttingDown = Volatile.Read(ref _isShuttingDown) != 0;
+                        SIPResponseStatusCodesEnum status = shuttingDown
+                            ? SIPResponseStatusCodesEnum.ServiceUnavailable
+                            : SIPResponseStatusCodesEnum.BusyHere;
+                        string reason = shuttingDown
+                            ? "Service Unavailable"
+                            : "Busy Here";
+                        try
+                        {
+                            call.Reject(status, reason);
+                        }
+                        finally
+                        {
+                            await call.StopAsync(
+                                "Incoming call was not admitted.",
+                                CancellationToken.None);
+                        }
+                    }
                 }
                 else if (sipRequest.Method == SIPMethodsEnum.BYE)
                 {

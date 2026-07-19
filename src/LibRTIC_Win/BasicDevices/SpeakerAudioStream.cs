@@ -62,7 +62,7 @@ public class SpeakerAudioStream : AudioStreamBuffer
         waveFormat = new
         (
             rate: bp.Format.SampleRate,
-            bits: bp.Format.SampleFormat.Bits(),
+            bits: bp.Format.SampleValueFormat.Bits(),
             channels: bp.Format.ChannelLayout.Count
         );
         provider = new WaveBufferProvider(Output.Stream, waveFormat);

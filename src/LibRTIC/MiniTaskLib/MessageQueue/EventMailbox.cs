@@ -1,4 +1,5 @@
 using DotBase.Core;
+using DotBase.Event;
 using DotBase.Log;
 using LibRTIC.MiniTaskLib.Base;
 using LibRTIC.MiniTaskLib.Events;

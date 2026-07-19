@@ -67,27 +67,31 @@ public class ClientApiConfig
         _configSource = configSource;
         _configSourceFile = configFile;
 
-        if (!String.IsNullOrEmpty(_aoaiEndpoint) && _aoaiUseEntra)
+        bool hasAzureEndpoint = !String.IsNullOrWhiteSpace(_aoaiEndpoint);
+        bool hasAzureDeployment = !String.IsNullOrWhiteSpace(_aoaiDeployment);
+
+        if (hasAzureEndpoint && hasAzureDeployment && _aoaiUseEntra)
         {
             _type = EndpointType.AzureOpenAIWithEntra;
         }
-        else if (!String.IsNullOrEmpty(_aoaiEndpoint) && !String.IsNullOrEmpty(_aoaiApiKey))
+        else if (hasAzureEndpoint && hasAzureDeployment && !String.IsNullOrWhiteSpace(_aoaiApiKey))
         {
             _type = EndpointType.AzureOpenAIWithKey;
         }
-        else if (!String.IsNullOrEmpty(_aoaiEndpoint))
+        else if (hasAzureEndpoint)
         {
-            // AZURE_OPENAI_ENDPOINT configured without AZURE_OPENAI_USE_ENTRA=true or AZURE_OPENAI_API_KEY.
+            // Azure configuration requires an endpoint, deployment, and authentication method.
             _type = EndpointType.IncompleteOptions;
         }
-        else if (!String.IsNullOrEmpty(_oaiApiKey))
+        else if (!String.IsNullOrWhiteSpace(_oaiApiKey))
         {
             _type = EndpointType.OpenAIWithKey;
         }
         else
         {
             // No environment configuration present. Please provide one of:
-            // - AZURE_OPENAI_ENDPOINT with AZURE_OPENAI_USE_ENTRA=true or AZURE_OPENAI_API_KEY
+            // - AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_DEPLOYMENT with
+            //   AZURE_OPENAI_USE_ENTRA=true or AZURE_OPENAI_API_KEY
             // - OPENAI_API_KEY
             _type = EndpointType.IncompleteOptions;
         }

@@ -1,12 +1,10 @@
 using AudioFormatLib.IO;
+using DotBase.Event;
 using LibRTIC.Config;
 using LibRTIC.MiniTaskLib;
 using LibRTIC.MiniTaskLib.Base;
-using OpenAI.Realtime;
 
 namespace LibRTIC.Conversation;
-
-#pragma warning disable OPENAI002
 
 public abstract class RTIConversation : TaskListBase
 {
@@ -33,13 +31,21 @@ public abstract class RTIConversation : TaskListBase
     /// </summary>
     public abstract EventQueue ConversationEvents { get; }
 
-    public abstract void ConfigureWith(RealtimeClient client, IAudioBufferOutput audioOutputStream);
-
     public abstract void ConfigureWith(RTICConfig options, IAudioBufferOutput audioOutputStream);
 
     public abstract void Run();
 
     public abstract Task RunAsync();
+
+    public abstract Task StartResponseAsync(string? instructions, CancellationToken cancellationToken);
+
+    public abstract Task InterruptResponseAsync(CancellationToken cancellationToken);
+
+    public abstract Task TruncateOutputItemAsync(
+        string itemId,
+        int contentIndex,
+        TimeSpan audioEndTime,
+        CancellationToken cancellationToken);
 
     public abstract TaskWithEvents? GetAwaiter();
 
@@ -109,7 +115,14 @@ public class ConversationInputSpeechStarted { }
 
 public class ConversationInputSpeechFinished { }
 
-public class ConversationItemStreamingAudioFinished { }
+public interface ConversationItemStreamingAudioFinished
+{
+    public string ResponseId { get; }
+
+    public string ItemId { get; }
+
+    public int ContentIndex { get; }
+}
 
 public interface ConversationInputTranscriptionFailed 
 {
@@ -132,7 +145,11 @@ public interface ConversationItemStreamingAudioPartDelta
 {
     public BinaryData Audio { get; }
 
+    public string ResponseId { get; }
+
     public string ItemId { get; }
+
+    public int ContentIndex { get; }
 }
 
 public interface ConversationItemStreamingTranscriptionPartDelta
