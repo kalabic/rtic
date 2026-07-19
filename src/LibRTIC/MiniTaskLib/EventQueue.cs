@@ -1,3 +1,5 @@
+using DotBase.Event;
+
 namespace LibRTIC.MiniTaskLib;
 
 /// <summary>

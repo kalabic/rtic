@@ -1,6 +1,7 @@
 using LibRTIC.MiniTaskLib.Base;
 using LibRTIC.MiniTaskLib.Events;
 using DotBase.Log;
+using DotBase.Event;
 
 namespace LibRTIC.MiniTaskLib;
 

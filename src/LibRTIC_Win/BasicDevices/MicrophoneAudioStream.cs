@@ -25,7 +25,7 @@ public class MicrophoneAudioStream : AudioStreamBuffer
     {
         _waveInEvent = new()
         {
-            WaveFormat = new WaveFormat(bp.Format.SampleRate, bp.Format.SampleFormat.Bits(), bp.Format.ChannelLayout.Count)
+            WaveFormat = new WaveFormat(bp.Format.SampleRate, bp.Format.SampleValueFormat.Bits(), bp.Format.ChannelLayout.Count)
         };
         handleDataAvailable = (_, e) =>
         {

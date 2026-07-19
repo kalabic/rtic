@@ -1,6 +1,7 @@
-using LibRTIC.MiniTaskLib;
+using DotBase.Event;
 
 namespace LibRTIC.MiniTaskLib.Model;
+
 
 /// <summary>
 /// Writes actions to an event mailbox and can complete the mailbox after a final action.

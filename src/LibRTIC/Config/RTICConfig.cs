@@ -24,7 +24,7 @@ public class RTICConfig
     static public RTICConfig NewIncompleteOptions()
     {
         return new RTICConfig("Incomplete or missing '" + ConfiguredClient.DEFAULT_API_FILENAME + "' or environment configuration. Please provide one of:\n"
-                            + " - AZURE_OPENAI_ENDPOINT with AZURE_OPENAI_USE_ENTRA=true or AZURE_OPENAI_API_KEY\n"
+                            + " - AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_DEPLOYMENT with AZURE_OPENAI_USE_ENTRA=true or AZURE_OPENAI_API_KEY\n"
                             + " - OPENAI_API_KEY");
     }
 

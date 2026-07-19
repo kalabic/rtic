@@ -44,7 +44,7 @@ public abstract class RTIConsoleAudio : DisposableBase
 
     protected InfoLog _info;
 
-    protected AFrameFormat _audioFormat;
+    protected APcmFormat _audioFormat;
 
     protected CancellationToken _cancellation;
 
@@ -59,7 +59,7 @@ public abstract class RTIConsoleAudio : DisposableBase
     private float _normalVolume = 0.0f;
 
     public RTIConsoleAudio(InfoLog info,
-                           AFrameFormat audioFormat,
+                           APcmFormat audioFormat,
                            CancellationToken cancellation)
     {
         this._info = info;

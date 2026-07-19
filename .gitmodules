@@ -1,0 +1,3 @@
+[submodule "external/sip2agent"]
+	path = external/sip2agent
+	url = https://github.com/kalabic/sip2agent.git

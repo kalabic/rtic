@@ -1,4 +1,9 @@
 <Solution>
+  <Folder Name="/external/" />
+  <Folder Name="/external/sip2agent/">
+    <Project Path="external/sip2agent/dotnet/SIPSorceryExt/SIPSorceryExt.csproj" />
+    <Project Path="external/sip2agent/dotnet/SIP2Agent.UserAgentService/SIP2Agent.UserAgentService.csproj" />
+  </Folder>
   <Project Path="src/LibRTIC/LibRTIC.csproj" />
   <Project Path="src/LibRTIC_Win/LibRTIC_Win.csproj" />
   <Project Path="src/MiniRTIC/MiniRTIC.csproj" />

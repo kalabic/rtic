@@ -10,11 +10,11 @@ public class ConversationSessionConfig
     //
     // Input and output audio format.
     //
-    public const ASampleFormat SAMPLE_FORMAT = ASampleFormat.S16;
+    public const ASampleValueFormat SAMPLE_VALUE_FORMAT = ASampleValueFormat.S16;
     public const int SAMPLES_PER_SECOND = 24000;
-    public const int CHANNELS = 1;
+    public const int CHANNEL_COUNT = 1;
     public const int AUDIO_INPUT_BUFFER_SECONDS = 2;
-    public static readonly AFrameFormat AudioFormat = new(SAMPLE_FORMAT, SAMPLES_PER_SECOND, CHANNELS);
+    public static readonly APcmFormat AudioFormat = new(SAMPLE_VALUE_FORMAT, SAMPLES_PER_SECOND, CHANNEL_COUNT);
 
     //
     // Default values for ServerVAD options.
@@ -40,6 +40,8 @@ public class ConversationSessionConfig
                         DetectionThreshold = DEFAULT_SERVERVAD_THRESHOLD,
                         PrefixPadding = TimeSpan.FromMilliseconds(DEFAULT_SERVERVAD_PREFIXPADDINGMS),
                         SilenceDuration = TimeSpan.FromMilliseconds(DEFAULT_SERVERVAD_SILENCEDURATIONMS),
+                        CreateResponseEnabled = true,
+                        InterruptResponseEnabled = false,
                     },
                 },
                 OutputAudioOptions = new()

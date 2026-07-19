@@ -139,7 +139,7 @@ public abstract class ConversationUpdatesDispatcher : EventMailbox
         }
         else if (update is RealtimeServerUpdateResponseOutputAudioDone audioDoneUpdate)
         {
-            _converter._actionItemStreamingAudioFinished.ProcessNew();
+            _converter._actionItemStreamingAudioFinished.Convert(audioDoneUpdate);
         }
         else if (update is RealtimeServerUpdateResponseOutputAudioTranscriptDone audioTranscriptionDoneUpdate)
         {
@@ -204,11 +204,11 @@ public abstract class ConversationUpdatesDispatcher : EventMailbox
             _sessionState.SessionStarted = true;
             _converter._actionSessionStarted.ProcessNew();
         }
-#if DEBUG
         else
         {
-            throw new InvalidOperationException("Unhandled server update: " + update.GetType().Name);
-        }
+#if DEBUG
+            _info.Info("Ignoring unsupported server update: " + update.GetType().Name);
 #endif
+        }
     }
 }

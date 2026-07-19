@@ -90,8 +90,59 @@ public class ConversationUpdatesReceiver : ConversationUpdatesDispatcher
     {
         HandleSessionExceptions(() =>
         {
-            _session?.CancelResponseAsync();
+            _session?.CancelResponse();
         });
+    }
+
+    public Task InterruptResponseAsync(CancellationToken cancellationToken)
+    {
+        RealtimeSessionClient session = GetConnectedSession();
+        return session.CancelResponseAsync(cancellationToken);
+    }
+
+    public Task TruncateOutputItemAsync(
+        string itemId,
+        int contentIndex,
+        TimeSpan audioEndTime,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(itemId);
+        ArgumentOutOfRangeException.ThrowIfNegative(contentIndex);
+        if (audioEndTime < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(audioEndTime));
+        }
+
+        RealtimeSessionClient session = GetConnectedSession();
+        return session.TruncateItemAsync(
+            itemId,
+            contentIndex,
+            audioEndTime,
+            cancellationToken);
+    }
+
+    public Task StartResponseAsync(string? instructions, CancellationToken cancellationToken)
+    {
+        RealtimeSessionClient session = GetConnectedSession();
+
+        return string.IsNullOrWhiteSpace(instructions)
+            ? session.StartResponseAsync(cancellationToken)
+            : session.StartResponseAsync(
+                new RealtimeResponseOptions { Instructions = instructions },
+                cancellationToken);
+    }
+
+    private RealtimeSessionClient GetConnectedSession()
+    {
+        RealtimeSessionClient session = _session
+            ?? throw new InvalidOperationException("The Realtime conversation session has not been created.");
+
+        if (!IsWebSocketOpen)
+        {
+            throw new InvalidOperationException("The Realtime conversation session is not connected.");
+        }
+
+        return session;
     }
 
     public void FinishReceiver()
@@ -101,7 +152,7 @@ public class ConversationUpdatesReceiver : ConversationUpdatesDispatcher
             _sessionState.receiverState = ConversationReceiverState.FinishAfterResponse;
             HandleSessionExceptions(() =>
             {
-                _session?.CancelResponseAsync();
+                _session?.CancelResponse();
             });
         }
     }

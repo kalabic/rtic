@@ -30,7 +30,7 @@ public class WinConsoleAudio : RTIConsoleAudio
 
     private MicrophoneAudioStream? _microphone = null;
 
-    public WinConsoleAudio(InfoLog info, AFrameFormat audioFormat, CancellationToken cancellation)
+    public WinConsoleAudio(InfoLog info, APcmFormat audioFormat, CancellationToken cancellation)
         : base(info, audioFormat, cancellation)
     {
     }

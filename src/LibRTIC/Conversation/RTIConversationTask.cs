@@ -9,6 +9,7 @@ using DotBase.Log;
 using OpenAI.Realtime;
 using System.Net.WebSockets;
 using static LibRTIC.Conversation.FailedToConnect;
+using DotBase.Event;
 
 namespace LibRTIC.Conversation;
 
@@ -27,14 +28,9 @@ public class RTIConversationTask : RTIConversation
 
     private const int STOP_TASK_TIMEOUT = 10000;
 
-    private const int AUDIO_INPUT_PACKET_MINIMUM = 2048;
-
-    private const int AUDIO_INPUT_PACKET = (AUDIO_INPUT_PACKET_MINIMUM * 8);
+    private const int AUDIO_INPUT_READ_CAPACITY_BYTES = 16_384;
 
     private const int INPUT_AUDIO_ACTION_PERIOD = 200;
-
-    private const int WAIT_MINIMUM_DATA_MS = 100;
-
 
     /// <summary>
     /// All events from this _collection are (should be) forwarded to <see cref="ReceiverQueue"/>,
@@ -43,10 +39,6 @@ public class RTIConversationTask : RTIConversation
     public override EventProducerCollection ReceiverEvents { get { return _receiverTaskEvents; } }
 
     public override EventQueue ConversationEvents { get { return _receiver.ReceiverEvents; } }
-
-    public ConversationUpdatesReceiver Receiver {  get { return _receiver; } }
-
-
 
     protected readonly InfoLog _info;
 
@@ -95,16 +87,6 @@ public class RTIConversationTask : RTIConversation
         receiverQueue.Connect<InputAudioTaskFinished>(HandleEvent);
         receiverQueue.Connect<FailedToConnect>(HandleEvent);
         receiverQueue.Connect<EventMailboxStarted>(HandleEvent);
-    }
-
-    /// <summary>
-    /// WIP, not used at all for now.
-    /// </summary>
-    /// <param name="client"></param>
-    /// <param name="audioInputStream"></param>
-    public override void ConfigureWith(RealtimeClient client, IAudioBufferOutput audioOutputStream)
-    {
-        throw new NotImplementedException();
     }
 
     /// <summary>
@@ -157,6 +139,23 @@ public class RTIConversationTask : RTIConversation
         receiverQueueTask.TaskEvents.Connect<TaskCompleted>( AssertAllTasksComplete );
         return receiverQueueTask;
     }
+
+    public override Task StartResponseAsync(string? instructions, CancellationToken cancellationToken)
+        => _receiver.StartResponseAsync(instructions, cancellationToken);
+
+    public override Task InterruptResponseAsync(CancellationToken cancellationToken)
+        => _receiver.InterruptResponseAsync(cancellationToken);
+
+    public override Task TruncateOutputItemAsync(
+        string itemId,
+        int contentIndex,
+        TimeSpan audioEndTime,
+        CancellationToken cancellationToken)
+        => _receiver.TruncateOutputItemAsync(
+            itemId,
+            contentIndex,
+            audioEndTime,
+            cancellationToken);
 
     public override void Await()
     {
@@ -268,6 +267,9 @@ public class RTIConversationTask : RTIConversation
     /// <param name="networkTaskCancellation"></param>
     /// <exception cref="InvalidOperationException"></exception>
     private void NetworkConnectionEntry(CancellationToken networkTaskCancellation)
+        => NetworkConnectionEntryAsync(networkTaskCancellation).GetAwaiter().GetResult();
+
+    private async Task NetworkConnectionEntryAsync(CancellationToken networkTaskCancellation)
     {
         if (_client is not null)
         {
@@ -282,22 +284,29 @@ public class RTIConversationTask : RTIConversation
 
         ClientStartedConnecting(_options._client.Type);
 
-        // TODO: Switch to asynchronous client initialization.
-        _client = ConfiguredClient.FromOptions(_info, _options._client);
-        if (_client is null)
-        {
-            FailedToConnect(ErrorStatus.FailedToConfigure, "Failed to configure OpenAI's realtime client from provided endpoint API options.");
-            return;
-        }
-
         RealtimeSessionClient? session = null;
         try
         {
-            var sessionClientOptions = GetRealtimeSessionClientOptions(_options._client);
-            session = _client.StartConversationSession(
-                _options._client.AOAIDeployment, sessionClientOptions, _startCanceller.Token);
+            ConfiguredClient.StartedRealtimeSession? startedSession =
+                await ConfiguredClient.StartConversationSessionAsync(
+                    _info,
+                    _options._client,
+                    _startCanceller.Token).ConfigureAwait(false);
+
+            if (startedSession is null)
+            {
+                FailedToConnect(
+                    ErrorStatus.FailedToConfigure,
+                    "Failed to configure OpenAI's realtime client from provided endpoint API options.");
+                return;
+            }
+
+            _client = startedSession.Client;
+            session = startedSession.Session;
             var options = ConversationSessionConfig.GetDefaultConversationSessionOptions();
-            session.ConfigureConversationSession(options, _startCanceller.Token);
+            await session.ConfigureConversationSessionAsync(
+                options,
+                _startCanceller.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException ex)
         {
@@ -333,21 +342,12 @@ public class RTIConversationTask : RTIConversation
         _receiver.SetSession(session);
 
         // 'Session Started Update' event is used to start sending microphone input to the server.
-        _receiver.ReceiverEvents.Connect<ConversationSessionConfigured>(StartAudioInputTask);
-
-        _receiver.ReceiveUpdates(networkTaskCancellation);
-    }
-
-    private static RealtimeSessionClientOptions? GetRealtimeSessionClientOptions(ClientApiConfig clientOptions)
-    {
-        if (clientOptions.Type != EndpointType.AzureOpenAIWithKey)
+        if (_audioOutputStream is not null)
         {
-            return null;
+            _receiver.ReceiverEvents.Connect<ConversationSessionConfigured>(StartAudioInputTask);
         }
 
-        RealtimeSessionClientOptions sessionClientOptions = new();
-        sessionClientOptions.Headers.Add("api-key", clientOptions.AOAIApiKey);
-        return sessionClientOptions;
+        _receiver.ReceiveUpdates(networkTaskCancellation);
     }
 
     /// <summary>
@@ -384,8 +384,6 @@ public class RTIConversationTask : RTIConversation
         format.BufferSize = (int)format.Format.BufferSizeFromSeconds(ConversationSessionConfig.AUDIO_INPUT_BUFFER_SECONDS);
         format.WaitForCompleteRead = true;
         _internalAudioBuffer = new AudioStreamBuffer(format, _audioCancellation.Token);
-        // _internalAudioBuffer.SetWaitMinimumData(WAIT_MINIMUM_DATA_MS);
-
         //
         // A task that reads input audio from intermediate buffer and sends it to the server.
         //
@@ -397,7 +395,7 @@ public class RTIConversationTask : RTIConversation
     }
 
     /// <summary>
-    /// This method is running as a separate task that enters <see cref="RealtimeConversationSession.SendInputAudio(Stream, CancellationToken)"/>
+    /// This method is running as a separate task that enters <see cref="RealtimeSessionClient.SendInputAudio(Stream, CancellationToken)"/>
     /// and is running in a loop inside.
     /// </summary>
     /// <param name="cancellation"></param>
@@ -419,14 +417,17 @@ public class RTIConversationTask : RTIConversation
             _audioCancellation is not null && !_audioCancellation.IsCancellationRequested)
         {
             int bytesRead = -1;
-            byte[] buffer = new byte[AUDIO_INPUT_PACKET];
+            byte[] buffer = new byte[AUDIO_INPUT_READ_CAPACITY_BYTES];
 
-            // Try to read complete chunks of size 'AUDIO_INPUT_PACKET_MINIMUM'.
+            // Drain all currently available caller audio in bounded transfers.
             while (!_audioCancellation.IsCancellationRequested && 
-                   (_internalAudioBuffer.AvailableSpace >= AUDIO_INPUT_PACKET) &&
+                   (_internalAudioBuffer.AvailableSpace >= AUDIO_INPUT_READ_CAPACITY_BYTES) &&
                    bytesRead != 0)
             {
-                bytesRead = _audioOutputStream.Read(buffer, 0, AUDIO_INPUT_PACKET);
+                bytesRead = _audioOutputStream.Read(
+                    buffer,
+                    0,
+                    AUDIO_INPUT_READ_CAPACITY_BYTES);
                 if (bytesRead > 0)
                 {
                     _internalAudioBuffer.Input.Stream.Write(buffer, 0, bytesRead);
