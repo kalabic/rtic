@@ -58,11 +58,11 @@ public abstract class RTIConversation : TaskListBase
 /// </summary>
 public class ClientStartedConnecting
 {
-    public readonly EndpointType EndpointType;
+    public readonly RTICProviderType ProviderType;
 
-    public ClientStartedConnecting(EndpointType endpointType)
+    public ClientStartedConnecting(RTICProviderType providerType)
     {
-        this.EndpointType = endpointType;
+        ProviderType = providerType;
     }
 }
 

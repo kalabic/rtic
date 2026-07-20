@@ -46,7 +46,7 @@ public partial class Program
 
         // Read client API options from environment variables and nothing else.
         var config = RTICConfig.FromEnvironment();
-        if (config._client is null)
+        if (config is null)
         {
             Output.Info.Error("Failed to read client API options from environment.");
             return;

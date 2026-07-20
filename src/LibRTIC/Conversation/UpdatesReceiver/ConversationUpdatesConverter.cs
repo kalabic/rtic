@@ -1,4 +1,4 @@
-﻿using OpenAI.Realtime;
+using OpenAI.Realtime;
 using LibRTIC.MiniTaskLib;
 using DotBase.Event;
 

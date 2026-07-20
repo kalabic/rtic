@@ -17,6 +17,7 @@
     <PackageReference Include="OpenAI" Version="2.12.0" />
     <PackageReference Include="Azure.Identity" Version="1.21.0" />
     <PackageReference Include="DotBase" Version="1.5.1-beta" />
+    <PackageReference Include="YamlDotNet" Version="18.1.0" />
   </ItemGroup>
 
 </Project>
