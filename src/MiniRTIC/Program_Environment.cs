@@ -1,4 +1,5 @@
-﻿using LibRTIC.Config;
+using LibRTIC.Config;
+using LibRTIC.Realtime;
 using System.Text;
 using LibRTIC_Win.BasicDevices;
 
@@ -34,7 +35,7 @@ public partial class Program
         // 'Hello there' sample is enqueued into audio input stream when session starts.
         byte[] helloBuffer = Properties.Resources.hello_there;
 
-        AudioOutput = new WinConsoleAudio(Output.Info, ConversationSessionConfig.AudioFormat, exitSource.Token);
+        AudioOutput = new WinConsoleAudio(Output.Info, RealtimeAudioContract.AudioFormat, exitSource.Token);
         AudioOutput.Start(inactiveStateMusic, helloBuffer);
         Output.AddStateEventHandler(AudioOutput.HandleEvent);
     }

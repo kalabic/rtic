@@ -2,6 +2,7 @@ using AudioFormatLib;
 using AudioFormatLib.Buffers;
 using AudioFormatLib.IO;
 using LibRTIC.Config;
+using LibRTIC.Realtime;
 using LibRTIC.Conversation.UpdatesReceiver;
 using LibRTIC.MiniTaskLib;
 using LibRTIC.MiniTaskLib.Events;
@@ -89,12 +90,6 @@ public class RTIConversationTask : RTIConversation
         receiverQueue.Connect<EventMailboxStarted>(HandleEvent);
     }
 
-    /// <summary>
-    /// WIP, 'RTICConfig' not used properly. Session options always loaded from
-    /// <see cref="ConversationSessionConfig.GetDefaultConversationSessionOptions"/>.
-    /// </summary>
-    /// <param name="options"></param>
-    /// <param name="audioInputStream"></param>
     public override void ConfigureWith(RTICConfig options, IAudioBufferOutput audioOutputStream)
     {
         this._options = options;
@@ -279,21 +274,20 @@ public class RTIConversationTask : RTIConversation
             throw new InvalidOperationException("Updates receiver object is not reusable.");
         }
 
-        if ((_options is null) || (_options._client is null))
+        if (_options is null)
         {
             FailedToConnect(ErrorStatus.EndpointOptionsMissing, "Realtime endpoint API options are missing.");
             return;
         }
 
-        ClientStartedConnecting(_options._client.Type);
+        ClientStartedConnecting(_options.Provider.Type);
 
         RealtimeSessionClient? session = null;
         try
         {
-            ConfiguredClient.StartedRealtimeSession? startedSession =
-                await ConfiguredClient.StartConversationSessionAsync(
-                    _info,
-                    _options._client,
+            RealtimeClientFactory.StartedRealtimeSession startedSession =
+                await RealtimeClientFactory.StartConversationSessionAsync(
+                    _options.Provider,
                     _startCanceller.Token).ConfigureAwait(false);
 
             if (startedSession is null)
@@ -306,7 +300,7 @@ public class RTIConversationTask : RTIConversation
 
             _client = startedSession.Client;
             session = startedSession.Session;
-            var options = ConversationSessionConfig.GetDefaultConversationSessionOptions();
+            var options = RealtimeSessionOptionsFactory.Create(_options.Session);
             await session.ConfigureConversationSessionAsync(
                 options,
                 _startCanceller.Token).ConfigureAwait(false);
@@ -383,8 +377,8 @@ public class RTIConversationTask : RTIConversation
         //
         // An intermediate buffer between 'send audio' task and input audio source (microphone). TODO: Will be useful later.
         //
-        var format = new ABufferParams(ConversationSessionConfig.AudioFormat);
-        format.BufferSize = (int)format.Format.BufferSizeFromSeconds(ConversationSessionConfig.AUDIO_INPUT_BUFFER_SECONDS);
+        var format = new ABufferParams(RealtimeAudioContract.AudioFormat);
+        format.BufferSize = (int)format.Format.BufferSizeFromSeconds(RealtimeAudioContract.InputBufferSeconds);
         format.WaitForCompleteRead = true;
         _internalAudioBuffer = new AudioStreamBuffer(format, _audioCancellation.Token);
         //
@@ -479,9 +473,9 @@ public class RTIConversationTask : RTIConversation
         InvokeReceiverTaskEvent(new FailedToConnect(errorStatus, message));
     }
 
-    private void ClientStartedConnecting(EndpointType endpointType)
+    private void ClientStartedConnecting(RTICProviderType providerType)
     {
-        InvokeReceiverTaskEvent(new ClientStartedConnecting(endpointType));
+        InvokeReceiverTaskEvent(new ClientStartedConnecting(providerType));
     }
 
     private void TaskExceptionOccurred(Exception ex)
