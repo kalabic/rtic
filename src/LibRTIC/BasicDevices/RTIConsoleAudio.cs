@@ -12,8 +12,8 @@ namespace LibRTIC.BasicDevices;
 /// Logic for enqueueing waiting music and sending 'hello sample' before conversation starts is here.
 /// <para>An abstract base class that expects from derived classes:
 /// <list type = "bullet">
-///   <item>Access to speaker in form of audio output stream by implementing <see cref="RTIConsoleAudio.Speaker"/></item>
-///   <item>Access to microphone in form of audio input stream by implementing <see cref="RTIConsoleAudio.Microphone"/></item>
+///   <item>Access to the speaker's raw audio input by implementing <see cref="RTIConsoleAudio.Speaker"/></item>
+///   <item>Access to complete microphone PCM16 frames by implementing <see cref="RTIConsoleAudio.Microphone"/></item>
 ///   <item>Adjust speaker volume according to value given to <see cref="RTIConsoleAudio.Volume"/></item>
 ///   <item>If any custom initialization is needed right before streaming is started, then override member <see cref="RTIConsoleAudio.Start"/>.</item>
 /// </list></para>
@@ -35,7 +35,8 @@ public abstract class RTIConsoleAudio : DisposableBase
     /// <summary> Enable SIP server to forward responses to SIP client. </summary>
     public virtual IAudioBufferOutput? SpeakerOutput { get { return null; } }
 
-    public abstract IAudioBufferOutput? Microphone { get; }
+    /// <summary>Captured microphone PCM16 frames, or <c>null</c> before initialization.</summary>
+    public abstract IPcm16FrameOutput? Microphone { get; }
 
     /// <summary> Enable sending recorded speech or silence. Enable SIP server to forward user speech from SIP client. </summary>
     public virtual IAudioBufferInput? MicrophoneInput { get { return null; } }

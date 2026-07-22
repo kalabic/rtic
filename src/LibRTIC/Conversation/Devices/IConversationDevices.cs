@@ -9,7 +9,8 @@ public interface IConversationDevices : IDisposable
 {
     public void ConnectingStarted();
 
-    public IAudioBufferOutput GetAudioOutput();
+    /// <summary>Gets the mono PCM16 microphone frames supplied to the Realtime session.</summary>
+    public IPcm16FrameOutput GetAudioOutput();
 
     public void ConnectReceiverEvents(EventProducerCollection receiverEvents);
 

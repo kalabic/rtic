@@ -31,7 +31,8 @@ public abstract class RTIConversation : TaskListBase
     /// </summary>
     public abstract EventQueue ConversationEvents { get; }
 
-    public abstract void ConfigureWith(RTICConfig options, IAudioBufferOutput audioOutputStream);
+    /// <summary>Configures the session and its mono PCM16 microphone-frame source.</summary>
+    public abstract void ConfigureWith(RTICConfig options, IPcm16FrameOutput audioOutputFrames);
 
     public abstract void Run();
 

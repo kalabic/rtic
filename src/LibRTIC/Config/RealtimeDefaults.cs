@@ -12,7 +12,11 @@ public static class RealtimeAudioContract
     public const int SamplesPerSecond = 24000;
     public const int ChannelCount = 1;
     public const int InputBufferSeconds = 2;
-    public static readonly APcmFormat AudioFormat = new(SampleValueFormat, SamplesPerSecond, ChannelCount);
+    public static readonly APcmFormat AudioFormat = new(
+        SampleValueFormat,
+        SamplesPerSecond,
+        ChannelCount,
+        byteOrder: AByteOrder.LittleEndian);
 }
 
 /// <summary>Fixed session behavior shared by every LibRTIC realtime conversation.</summary>
