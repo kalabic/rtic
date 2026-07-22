@@ -9,7 +9,7 @@ public class WinConsoleAudio : RTIConsoleAudio
 {
     public override IAudioBufferInput? Speaker { get { return _speaker?.Input.Buffer; } }
 
-    public override IAudioBufferOutput? Microphone { get { return _microphone?.Output.Buffer; } }
+    public override IPcm16FrameOutput? Microphone { get { return _microphone?.Output.Pcm16Frames; } }
 
     public override IAudioBufferInput? MicrophoneInput { get { return _microphone?.Input.Buffer; } }
 
