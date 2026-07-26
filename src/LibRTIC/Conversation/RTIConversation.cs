@@ -13,23 +13,23 @@ public abstract class RTIConversation : TaskListBase
     /// <list type = "bullet">
     ///   <item><see cref="ClientStartedConnecting"></item>
     ///   <item><see cref="InputAudioTaskFinished"></item>
-    ///   <item><see cref="FailedToConnect"></item>
+    ///   <item><see cref="FailedToConnectMsg"></item>
     /// </list>
     /// </summary>
-    public abstract EventProducerCollection ReceiverEvents { get; }
+    public abstract EventProducerCollection ConversationEvents { get; }
 
     /// <summary>
     /// Conversation related events.
     /// <list type = "bullet">
     ///   <item><see cref="ConversationSessionFinished"></item>
-    ///   <item><see cref="ConversationSessionStarted"></item>
-    ///   <item><see cref="ConversationInputAudioCleared"></item>
-    ///   <item><see cref="ConversationInputAudioCommitted"></item>
-    ///   <item><see cref="ConversationItemCreated"></item>
+    ///   <item><see cref="RTICSessionCreated"></item>
+    ///   <item><see cref="RTICInputAudioCleared"></item>
+    ///   <item><see cref="RTICInputAudioCommitted"></item>
+    ///   <item><see cref="RTICItemCreated"></item>
     ///   <item>etc.</item>
     /// </list>
     /// </summary>
-    public abstract EventQueue ConversationEvents { get; }
+    public abstract EventQueue UpdatesReceiverEvents { get; }
 
     /// <summary>Configures the session and its mono PCM16 microphone-frame source.</summary>
     public abstract void ConfigureWith(RTICConfig options, IPcm16FrameOutput audioOutputFrames);
@@ -38,16 +38,6 @@ public abstract class RTIConversation : TaskListBase
 
     public abstract Task RunAsync();
 
-    public abstract Task StartResponseAsync(string? instructions, CancellationToken cancellationToken);
-
-    public abstract Task InterruptResponseAsync(CancellationToken cancellationToken);
-
-    public abstract Task TruncateOutputItemAsync(
-        string itemId,
-        int contentIndex,
-        TimeSpan audioEndTime,
-        CancellationToken cancellationToken);
-
     public abstract TaskWithEvents? GetAwaiter();
 
     public abstract void Cancel();
@@ -55,7 +45,7 @@ public abstract class RTIConversation : TaskListBase
 
 
 /// <summary>
-/// Invoked from <see cref="RTIConversation.ReceiverEvents"/>
+/// Invoked from <see cref="RTIConversation.ConversationEvents"/>
 /// </summary>
 public class ClientStartedConnecting
 {
@@ -72,7 +62,7 @@ public class InputAudioTaskFinished
     public InputAudioTaskFinished() { }
 }
 
-public class FailedToConnect
+public class FailedToConnectMsg
 {
     public enum ErrorStatus
     {
@@ -81,13 +71,35 @@ public class FailedToConnect
         FailedToConfigure,
         ConnectionCanceled,
         ServerDidNotRespond,
+        StartupTimedOut,
     }
 
     public readonly ErrorStatus Reason;
 
     public readonly string Message;
 
-    public FailedToConnect(ErrorStatus reason, string message)
+    public FailedToConnectMsg(ErrorStatus reason, string message)
+    {
+        this.Reason = reason;
+        this.Message = message;
+    }
+}
+
+/// <summary>
+/// Client connected, but for some reason connection is not operational (for example, audio related issues).
+/// </summary>
+public class FailedToOperateMsg
+{
+    public enum ErrorStatus
+    {
+        Unknown,
+    }
+
+    public readonly ErrorStatus Reason;
+
+    public readonly string Message;
+
+    public FailedToOperateMsg(ErrorStatus reason, string message)
     {
         this.Reason = reason;
         this.Message = message;
@@ -96,87 +108,6 @@ public class FailedToConnect
 
 
 /// <summary>
-/// Invoked from <see cref="RTIConversation.ConversationEvents"/>
+/// Invoked from <see cref="RTIConversation.UpdatesReceiverEvents"/>
 /// </summary>
 public class ConversationSessionFinished { }
-
-public class ConversationSessionStarted { }
-
-public class ConversationInputAudioCleared { }
-
-public class ConversationInputAudioCommitted { }
-
-public class ConversationItemCreated { }
-
-public class ConversationItemDeleted { }
-
-public class ConversationError { }
-
-public class ConversationInputSpeechStarted { }
-
-public class ConversationInputSpeechFinished { }
-
-public interface ConversationItemStreamingAudioFinished
-{
-    public string ResponseId { get; }
-
-    public string ItemId { get; }
-
-    public int ContentIndex { get; }
-}
-
-public interface ConversationInputTranscriptionFailed 
-{
-    public string ErrorMessage { get; }
-}
-
-public interface ConversationInputTranscriptionFinished
-{
-    public string Transcript { get; }
-}
-
-public class ConversationItemStreamingAudioTranscriptionFinished { }
-
-public interface ConversationItemStreamingFinished
-{
-    public string ItemId { get; }
-}
-
-public interface ConversationItemStreamingAudioPartDelta 
-{
-    public BinaryData Audio { get; }
-
-    public string ResponseId { get; }
-
-    public string ItemId { get; }
-
-    public int ContentIndex { get; }
-}
-
-public interface ConversationItemStreamingTranscriptionPartDelta
-{
-    public string ItemId { get; }
-
-    public string Transcript { get; }
-}
-
-public class ConversationItemStreamingPartFinished { }
-
-public interface ConversationItemStreamingStarted
-{
-    public string FunctionName { get; }
-
-    public string ItemId { get; }
-}
-
-public class ConversationItemStreamingTextFinished { }
-
-public class ConversationRateLimits { }
-
-public class ConversationResponseFinished { }
-
-public class ConversationResponseStarted { }
-
-public class ConversationSessionConfigured { }
-
-public class ConversationItemTruncated { }

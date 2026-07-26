@@ -24,6 +24,11 @@ public class RTISessionEventProxy : IRTSessionEvents
         _sep.ProcessSessionEvent(RTISessionEventId.ConnectingFailed, message);
     }
 
+    public void OperationFailed(string? message = null)
+    {
+        _sep.ProcessSessionEvent(RTISessionEventId.OperationFailed, message);
+    }
+
     public void SessionStarted(string? message = null)
     {
         _sep.ProcessSessionEvent(RTISessionEventId.SessionStarted, message);

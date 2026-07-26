@@ -100,6 +100,7 @@ public sealed class RTICConfigLoaderTests
     public void EnvironmentSource_IsUsedOnlyWhenNoDefaultYamlExists()
     {
         string directory = Directory.CreateTempSubdirectory("librtic-").FullName;
+        string? openAiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
         string? endpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
         string? deployment = Environment.GetEnvironmentVariable("AZURE_OPENAI_DEPLOYMENT");
         string? azureKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY");
@@ -112,12 +113,12 @@ public sealed class RTICConfigLoaderTests
         try
         {
             RTICConfigLoadResult result = RTICConfigLoader.LoadAuto(workingDirectory: directory);
-            Assert.True(result.IsSuccess);
+            Assert.True(result.IsSuccess, string.Join(Environment.NewLine, result.Diagnostics));
             Assert.Equal("environment-key", Assert.IsType<OpenAIProviderOptions>(result.Config!.Provider).ApiKey);
         }
         finally
         {
-            Environment.SetEnvironmentVariable("OPENAI_API_KEY", null);
+            Environment.SetEnvironmentVariable("OPENAI_API_KEY", openAiKey);
             Environment.SetEnvironmentVariable("AZURE_OPENAI_ENDPOINT", endpoint);
             Environment.SetEnvironmentVariable("AZURE_OPENAI_DEPLOYMENT", deployment);
             Environment.SetEnvironmentVariable("AZURE_OPENAI_API_KEY", azureKey);
@@ -162,6 +163,106 @@ public sealed class RTICConfigLoaderTests
         Assert.True(vad.CreateResponseEnabled);
         Assert.False(vad.InterruptResponseEnabled);
         Assert.Equal(2048, first.MaxOutputTokenCount!.CustomMaxOutputTokenCount);
+    }
+
+    [Fact]
+    public void ConsoleEntry_ResolvesRelativePathsAndAppVerbose()
+    {
+        string directory = Directory.CreateTempSubdirectory("librtic-entry-").FullName;
+        try
+        {
+            File.WriteAllText(Path.Combine(directory, "api.yaml"), OpenAiYaml("entry-key"));
+            File.WriteAllText(
+                Path.Combine(directory, "session.yaml"),
+                "instructions: |-\n  Hello entry\nmax_output_tokens: 1024\n");
+            string entry = Path.Combine(directory, RTICConfigLoader.DefaultConsoleEntryFileName);
+            File.WriteAllText(entry,
+                "realtime_client:\n" +
+                "  api_config_path: \"./api.yaml\"\n" +
+                "  session_config_path: \"./session.yaml\"\n" +
+                "app:\n" +
+                "  verbose: true\n");
+
+            RTICConsoleConfigLoadResult result = RTICConfigLoader.LoadFromConsoleEntryFile(entry);
+            Assert.True(result.IsSuccess, string.Join(Environment.NewLine, result.Diagnostics));
+            Assert.Equal("entry-key", Assert.IsType<OpenAIProviderOptions>(result.Config!.Provider).ApiKey);
+            Assert.Contains("Hello entry", result.Config.Session.Instructions);
+            Assert.Equal(1024, result.Config.Session.MaxOutputTokens);
+            Assert.True(result.App.Verbose);
+            Assert.Equal(Path.GetFullPath(Path.Combine(directory, "api.yaml")), result.ResolvedApiConfigPath);
+            Assert.Equal(Path.GetFullPath(Path.Combine(directory, "session.yaml")), result.ResolvedSessionConfigPath);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ConsoleEntry_DoesNotUseEnvironmentFallback()
+    {
+        string directory = Directory.CreateTempSubdirectory("librtic-entry-env-").FullName;
+        Environment.SetEnvironmentVariable("OPENAI_API_KEY", "environment-key");
+        try
+        {
+            string entry = Path.Combine(directory, "rtic_console.yaml");
+            File.WriteAllText(entry,
+                "realtime_client:\n" +
+                "  api_config_path: \"./missing-api.yaml\"\n" +
+                "app:\n" +
+                "  verbose: false\n");
+
+            RTICConsoleConfigLoadResult result = RTICConfigLoader.LoadFromConsoleEntryFile(entry);
+            Assert.False(result.IsSuccess);
+            Assert.Null(result.Config);
+            Assert.Contains(result.Diagnostics, d => d.Code == "file_not_found");
+            Assert.False(result.App.Verbose);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OPENAI_API_KEY", null);
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("app:\n  verbose: yes", "wrong_type")]
+    [InlineData("app:\n  verbose: 1", "wrong_type")]
+    [InlineData("realtime_client:\n  api_config_path: ./a.yaml\nunknown: x", "unknown_key")]
+    [InlineData("realtime_client: {}", "required_value")]
+    [InlineData("app:\n  verbose: true", "required_value")]
+    public void ConsoleEntry_RejectsInvalidInputs(string yaml, string expectedCode)
+    {
+        string path = Write("rtic_console.yaml", yaml);
+        RTICConsoleConfigLoadResult result = RTICConfigLoader.LoadFromConsoleEntryFile(path);
+        Assert.False(result.IsSuccess);
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == expectedCode);
+    }
+
+    [Theory]
+    [InlineData(new string[0], RTICConsoleHostArguments.Mode.Legacy, null)]
+    [InlineData(new[] { "--api", "a.yaml" }, RTICConsoleHostArguments.Mode.Legacy, null)]
+    [InlineData(new[] { "--config", "host.yaml" }, RTICConsoleHostArguments.Mode.ExclusiveConfig, "host.yaml")]
+    [InlineData(new[] { "-c", "host.yaml" }, RTICConsoleHostArguments.Mode.ExclusiveConfig, "host.yaml")]
+    [InlineData(new[] { "--config" }, RTICConsoleHostArguments.Mode.Invalid, null)]
+    [InlineData(new[] { "--config", "host.yaml", "--verbose" }, RTICConsoleHostArguments.Mode.Invalid, null)]
+    [InlineData(new[] { "--api", "a.yaml", "--config", "host.yaml" }, RTICConsoleHostArguments.Mode.Invalid, null)]
+    public void ConsoleHostArguments_ClassifyExclusiveConfig(
+        string[] args,
+        RTICConsoleHostArguments.Mode expectedMode,
+        string? expectedPath)
+    {
+        RTICConsoleHostArguments.Mode mode = RTICConsoleHostArguments.Classify(args, out string? path, out string? error);
+        Assert.Equal(expectedMode, mode);
+        Assert.Equal(expectedPath, path);
+        if (expectedMode == RTICConsoleHostArguments.Mode.Invalid)
+        {
+            Assert.False(string.IsNullOrWhiteSpace(error));
+        }
+        else
+        {
+            Assert.Null(error);
+        }
     }
 
     private static string Example(string name) => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "docs", name));

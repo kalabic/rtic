@@ -22,7 +22,7 @@ public static class RealtimeClientFactory
         public RealtimeSessionClient Session { get; } = session;
     }
 
-    public static RealtimeClient Create(RTICProviderOptions provider) => CreateContext(provider).Client;
+    internal static RealtimeClient Create(RTICProviderOptions provider) => CreateContext(provider).Client;
 
     internal static async Task<StartedRealtimeSession> StartConversationSessionAsync(RTICProviderOptions provider, CancellationToken cancellationToken)
     {

@@ -6,9 +6,11 @@ namespace LibRTIC_Win.BasicDevices;
 
 public class MicrophoneAudioStream : AudioStreamBuffer
 {
-    // For simplicity, to be able to queue 'Hello there' sample in all kinds of scenarios,
-    // this is configured to use a static 3-second ring buffer. TODO: Fix this
-    public const int BUFFER_SECONDS = 3;
+    /// <summary>
+    /// Capture ring buffer length in seconds. Sized for the hello sample plus a short
+    /// utterance before the Realtime send loop drains frames (aligned with other mic setups).
+    /// </summary>
+    public const int BUFFER_SECONDS = 5;
 
     public static MicrophoneAudioStream Create(ABufferParams bp, CancellationToken microphoneToken)
     {

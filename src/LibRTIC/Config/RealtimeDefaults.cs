@@ -23,7 +23,7 @@ public static class RealtimeAudioContract
 public static class RealtimeSessionDefaults
 {
     public const string InputTranscriptionModel = "whisper-1";
-    public static readonly RealtimeVoice OutputVoice = RealtimeVoice.Alloy;
+    internal static readonly RealtimeVoice OutputVoice = RealtimeVoice.Alloy;
     public const bool CreateResponseEnabled = true;
     public const bool InterruptResponseEnabled = false;
 }

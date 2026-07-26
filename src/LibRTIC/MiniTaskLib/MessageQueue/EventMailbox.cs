@@ -8,7 +8,7 @@ using System.Threading.Channels;
 
 namespace LibRTIC.MiniTaskLib.MessageQueue;
 
-public class EventMailbox : DisposableBase, IEventMailboxWriter
+public class EventMailbox : DisposableBase, IEventMailboxWriter, IEventMailbox
 {
     public bool IsComplete { get { return IsWriterComplete; } }
 
@@ -103,13 +103,27 @@ public class EventMailbox : DisposableBase, IEventMailboxWriter
         }
         catch (Exception ex)
         {
-            _info.Warning("Exception while invoking mailbox event handlers.", ex);
+            if (string.IsNullOrWhiteSpace(_label))
+            {
+                _info.Warning("Exception while invoking mailbox event handlers.", ex);
+            }
+            else
+            {
+                _info.Warning($"Exception while invoking '{_label}' handlers.", ex);
+            }
         }
     }
 
     protected void NotifyExceptionOccurred(Exception ex)
     {
-        _info.Error("Event mailbox failed.", ex);
+        if (string.IsNullOrWhiteSpace(_label))
+        {
+            _info.Error("Event mailbox failed.", ex);
+        }
+        else
+        {
+            _info.Error($"'{_label}' failed.", ex);
+        }
         InvokeEvent(new TaskExceptionOccured(ex));
     }
 

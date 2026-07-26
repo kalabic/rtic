@@ -21,10 +21,11 @@ public class ConversationUpdatesInfo
     public int nTranscriptionFinished = 0;
 
     public bool SessionStarted = false;
-    public bool ResponseStarted = false;
-    public bool SpeechStarted = false;
-    public bool StreamingStarted = false;
-    public bool WaitingTranscription = false;
+
+    public int ActiveResponseCount = 0;
+    public int ActiveSpeechCount = 0;
+    public int ActiveStreamingItemCount = 0;
+    public int PendingTranscriptionCount = 0;
 
     public bool Disposed = false;
     public bool InputAudioRunning = false;

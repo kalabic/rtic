@@ -42,6 +42,9 @@ public class RTICmdLineState_Answering : RTIConsoleStateWithTimer
     {
         switch (messageType)
         {
+            case RTISessionEventId.OperationFailed:
+                return stateCollection.State_Inactive;
+
             case RTISessionEventId.ItemStarted:
                 return stateCollection.State_WritingItem;
 

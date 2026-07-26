@@ -44,6 +44,9 @@ public class RTICmdLineState_Connecting : RTIConsoleStateWithTimer
             case RTISessionEventId.ConnectingFailed:
                 return stateCollection.State_Inactive;
 
+            case RTISessionEventId.OperationFailed:
+                return stateCollection.State_Inactive;
+
             case RTISessionEventId.SessionStarted:
                 return stateCollection.State_Answering;
 
