@@ -1,251 +1,174 @@
-using OpenAI.Realtime;
-using LibRTIC.MiniTaskLib;
 using DotBase.Event;
+using LibRTIC.MiniTaskLib;
 
 namespace LibRTIC.Conversation.UpdatesReceiver;
 
-#pragma warning disable OPENAI002
-
-public class ConversationUpdatesConverter
+internal sealed class ConversationUpdatesConverter
 {
-    public ReplaceAndForward<ConversationSessionStarted, 
-                             RealtimeServerUpdateSessionCreated> 
-                             _actionSessionStarted;
+    private readonly NeutralForwarder<RTICSessionCreated> _sessionCreated;
+    private readonly NeutralForwarder<RTICSessionConfigured> _sessionConfigured;
+    private readonly NeutralForwarder<RTICTimelineCreated> _timelineCreated;
+    private readonly NeutralForwarder<RTICItemAdded> _itemAdded;
+    private readonly NeutralForwarder<RTICItemCreated> _itemCreated;
+    private readonly NeutralForwarder<RTICItemCompleted> _itemCompleted;
+    private readonly NeutralForwarder<RTICItemRetrieved> _itemRetrieved;
+    private readonly NeutralForwarder<RTICItemDeleted> _itemDeleted;
+    private readonly NeutralForwarder<RTICItemTruncated> _itemTruncated;
+    private readonly NeutralForwarder<RTICInputAudioCleared> _inputAudioCleared;
+    private readonly NeutralForwarder<RTICInputAudioCommitted> _inputAudioCommitted;
+    private readonly NeutralForwarder<RTICInputAudioTimedOut> _inputAudioTimedOut;
+    private readonly NeutralForwarder<RTICInputSpeechStarted> _inputSpeechStarted;
+    private readonly NeutralForwarder<RTICInputSpeechFinished> _inputSpeechFinished;
+    private readonly NeutralForwarder<RTICDtmfReceived> _dtmfReceived;
+    private readonly NeutralForwarder<RTICInputTranscriptionDelta> _transcriptionDelta;
+    private readonly NeutralForwarder<RTICInputTranscriptionCompleted> _transcriptionCompleted;
+    private readonly NeutralForwarder<RTICInputTranscriptionFailed> _transcriptionFailed;
+    private readonly NeutralForwarder<RTICInputTranscriptionSegment> _transcriptionSegment;
+    private readonly NeutralForwarder<RTICResponseStarted> _responseStarted;
+    private readonly NeutralForwarder<RTICResponseCompleted> _responseCompleted;
+    private readonly NeutralForwarder<RTICOutputItemStarted> _outputItemStarted;
+    private readonly NeutralForwarder<RTICOutputItemCompleted> _outputItemCompleted;
+    private readonly NeutralForwarder<RTICOutputContentPartStarted> _contentPartStarted;
+    private readonly NeutralForwarder<RTICOutputContentPartCompleted> _contentPartCompleted;
+    private readonly NeutralForwarder<RTICOutputAudioDelta> _audioDelta;
+    private readonly NeutralForwarder<RTICOutputAudioCompleted> _audioCompleted;
+    private readonly NeutralForwarder<RTICOutputTextDelta> _textDelta;
+    private readonly NeutralForwarder<RTICOutputTextCompleted> _textCompleted;
+    private readonly NeutralForwarder<RTICOutputTranscriptDelta> _transcriptDelta;
+    private readonly NeutralForwarder<RTICOutputTranscriptCompleted> _transcriptCompleted;
+    private readonly NeutralForwarder<RTICFunctionArgumentsDelta> _functionArgumentsDelta;
+    private readonly NeutralForwarder<RTICFunctionArgumentsCompleted> _functionArgumentsCompleted;
+    private readonly NeutralForwarder<RTICMcpToolsListed> _mcpToolsListed;
+    private readonly NeutralForwarder<RTICMcpCallStarted> _mcpCallStarted;
+    private readonly NeutralForwarder<RTICMcpCallArgumentsDelta> _mcpArgumentsDelta;
+    private readonly NeutralForwarder<RTICMcpCallArgumentsCompleted> _mcpArgumentsCompleted;
+    private readonly NeutralForwarder<RTICMcpCallCompleted> _mcpCallCompleted;
+    private readonly NeutralForwarder<RTICMcpCallFailed> _mcpCallFailed;
+    private readonly NeutralForwarder<RTICErrorReceived> _errorReceived;
+    private readonly NeutralForwarder<RTICRateLimitsUpdated> _rateLimitsUpdated;
+    private readonly NeutralForwarder<RTICOutputAudioPlaybackStarted> _playbackStarted;
+    private readonly NeutralForwarder<RTICOutputAudioPlaybackCompleted> _playbackCompleted;
+    private readonly NeutralForwarder<RTICOutputAudioPlaybackCleared> _playbackCleared;
+    private readonly NeutralForwarder<RTICUnknownProviderEvent> _unknownProviderEvent;
 
-    public ReplaceAndForward<ConversationInputAudioCleared, 
-                             RealtimeServerUpdateInputAudioBufferCleared> 
-                             _actionInputAudioCleared;
-
-    public ReplaceAndForward<ConversationInputAudioCommitted, 
-                             RealtimeServerUpdateInputAudioBufferCommitted> 
-                             _actionInputAudioCommitted;
-
-    public ReplaceAndForward<ConversationItemCreated, 
-                             RealtimeServerUpdateConversationItemCreated> 
-                             _actionItemCreated;
-
-    public ReplaceAndForward<ConversationItemDeleted, 
-                             RealtimeServerUpdateConversationItemDeleted> 
-                             _actionItemDeleted;
-
-    public ReplaceAndForward<ConversationError, 
-                             RealtimeServerUpdateError> 
-                             _actionError;
-
-    public ReplaceAndForward<ConversationInputSpeechStarted, 
-                             RealtimeServerUpdateInputAudioBufferSpeechStarted> 
-                             _actionInputSpeechStarted;
-
-    public ReplaceAndForward<ConversationInputSpeechFinished, 
-                             RealtimeServerUpdateInputAudioBufferSpeechStopped> 
-                             _actionInputSpeechFinished;
-
-    public ConvertAndForward<ConversationItemStreamingAudioFinished,
-                             RealtimeServerUpdateResponseOutputAudioDone>
-                             _actionItemStreamingAudioFinished;
-
-    public ConvertAndForward<ConversationInputTranscriptionFailed, 
-                             RealtimeServerUpdateConversationItemInputAudioTranscriptionFailed> 
-                             _actionInputTranscriptionFailed;
-
-    public ConvertAndForward<ConversationInputTranscriptionFinished, 
-                             RealtimeServerUpdateConversationItemInputAudioTranscriptionCompleted> 
-                             _actionInputTranscriptionFinished;
-
-    public ReplaceAndForward<ConversationItemStreamingAudioTranscriptionFinished,
-                             RealtimeServerUpdateResponseOutputAudioTranscriptDone>
-                             _actionItemStreamingAudioTranscriptionFinished;
-
-    public ConvertAndForward<ConversationItemStreamingFinished, 
-                             RealtimeServerUpdateResponseOutputItemDone> 
-                             _actionItemStreamingFinished;
-
-    public ConvertAndForward<ConversationItemStreamingAudioPartDelta,
-                             RealtimeServerUpdateResponseOutputAudioDelta>
-                             _actionItemStreamingPartAudioDelta;
-
-    public ConvertAndForward<ConversationItemStreamingTranscriptionPartDelta,
-                             RealtimeServerUpdateResponseOutputAudioTranscriptDelta>
-                             _actionItemStreamingPartTranscriptDelta;
-
-    public ReplaceAndForward<ConversationItemStreamingPartFinished,
-                             RealtimeServerUpdateResponseContentPartDone>
-                             _actionItemStreamingPartFinished;
-
-    public ConvertAndForward<ConversationItemStreamingStarted, 
-                             RealtimeServerUpdateResponseOutputItemAdded> 
-                             _actionItemStreamingStarted;
-
-    public ReplaceAndForward<ConversationItemStreamingTextFinished,
-                             RealtimeServerUpdateResponseOutputTextDone>
-                             _actionItemStreamingTextFinished;
-
-    public ReplaceAndForward<ConversationRateLimits,
-                             RealtimeServerUpdateRateLimitsUpdated>
-                             _actionRateLimits;
-
-    public ReplaceAndForward<ConversationResponseFinished, 
-                             RealtimeServerUpdateResponseDone> 
-                             _actionResponseFinished;
-
-    public ReplaceAndForward<ConversationResponseStarted, 
-                             RealtimeServerUpdateResponseCreated> 
-                             _actionResponseStarted;
-
-    public ReplaceAndForward<ConversationSessionConfigured, 
-                             RealtimeServerUpdateSessionUpdated> 
-                             _actionSessionConfigured;
-
-    public ReplaceAndForward<ConversationItemTruncated, 
-                             RealtimeServerUpdateConversationItemTruncated> 
-                             _actionItemTruncated;
-
-    public ConversationUpdatesConverter(EventProducerCollection sourceEvents, EventQueue eventQueue)
+    internal ConversationUpdatesConverter(
+        EventProducerCollection sourceEvents,
+        EventQueue eventQueue)
     {
-        _actionSessionStarted = new(sourceEvents, eventQueue);
-        _actionInputAudioCleared = new(sourceEvents, eventQueue);
-        _actionInputAudioCommitted = new(sourceEvents, eventQueue);
-        _actionItemCreated = new(sourceEvents, eventQueue);
-        _actionItemDeleted = new(sourceEvents, eventQueue);
-        _actionError = new(sourceEvents, eventQueue);
-        _actionInputSpeechStarted = new(sourceEvents, eventQueue);
-        _actionInputSpeechFinished = new(sourceEvents, eventQueue);
-        _actionItemStreamingAudioFinished = new(sourceEvents, eventQueue,
-            (update) => { return new ConversationItemStreamingAudioFinishedConverter(update); });
-        _actionInputTranscriptionFailed = new(sourceEvents, eventQueue,
-            (update) => { return new ConversationInputTranscriptionFailedConverter(update); });
-        _actionInputTranscriptionFinished = new(sourceEvents, eventQueue,
-            (update) => { return new ConversationInputTranscriptionFinishedConverter(update); });
-        _actionItemStreamingAudioTranscriptionFinished = new(sourceEvents, eventQueue);
-        _actionItemStreamingFinished = new(sourceEvents, eventQueue,
-            (update) => { return new ConversationItemStreamingFinishedConverter(update); });
-        _actionItemStreamingPartAudioDelta = new(sourceEvents, eventQueue,
-            (update) => { return new ConversationItemStreamingPartAudioDeltaConverter(update); });
-        _actionItemStreamingPartTranscriptDelta = new(sourceEvents, eventQueue,
-            (update) => { return new ConversationItemStreamingPartTranscriptDeltaConverter(update); });
-        _actionItemStreamingPartFinished = new(sourceEvents, eventQueue);
-        _actionItemStreamingStarted = new(sourceEvents, eventQueue,
-            (update) => { return new ConversationItemStreamingStartedConverter(update); });
-        _actionItemStreamingTextFinished = new(sourceEvents, eventQueue);
-        _actionRateLimits = new(sourceEvents, eventQueue);
-        _actionResponseFinished = new(sourceEvents, eventQueue);
-        _actionResponseStarted = new(sourceEvents, eventQueue);
-        _actionSessionConfigured = new(sourceEvents, eventQueue);
-        _actionItemTruncated = new(sourceEvents, eventQueue);
+        _sessionCreated = new(sourceEvents, eventQueue);
+        _sessionConfigured = new(sourceEvents, eventQueue);
+        _timelineCreated = new(sourceEvents, eventQueue);
+        _itemAdded = new(sourceEvents, eventQueue);
+        _itemCreated = new(sourceEvents, eventQueue);
+        _itemCompleted = new(sourceEvents, eventQueue);
+        _itemRetrieved = new(sourceEvents, eventQueue);
+        _itemDeleted = new(sourceEvents, eventQueue);
+        _itemTruncated = new(sourceEvents, eventQueue);
+        _inputAudioCleared = new(sourceEvents, eventQueue);
+        _inputAudioCommitted = new(sourceEvents, eventQueue);
+        _inputAudioTimedOut = new(sourceEvents, eventQueue);
+        _inputSpeechStarted = new(sourceEvents, eventQueue);
+        _inputSpeechFinished = new(sourceEvents, eventQueue);
+        _dtmfReceived = new(sourceEvents, eventQueue);
+        _transcriptionDelta = new(sourceEvents, eventQueue);
+        _transcriptionCompleted = new(sourceEvents, eventQueue);
+        _transcriptionFailed = new(sourceEvents, eventQueue);
+        _transcriptionSegment = new(sourceEvents, eventQueue);
+        _responseStarted = new(sourceEvents, eventQueue);
+        _responseCompleted = new(sourceEvents, eventQueue);
+        _outputItemStarted = new(sourceEvents, eventQueue);
+        _outputItemCompleted = new(sourceEvents, eventQueue);
+        _contentPartStarted = new(sourceEvents, eventQueue);
+        _contentPartCompleted = new(sourceEvents, eventQueue);
+        _audioDelta = new(sourceEvents, eventQueue);
+        _audioCompleted = new(sourceEvents, eventQueue);
+        _textDelta = new(sourceEvents, eventQueue);
+        _textCompleted = new(sourceEvents, eventQueue);
+        _transcriptDelta = new(sourceEvents, eventQueue);
+        _transcriptCompleted = new(sourceEvents, eventQueue);
+        _functionArgumentsDelta = new(sourceEvents, eventQueue);
+        _functionArgumentsCompleted = new(sourceEvents, eventQueue);
+        _mcpToolsListed = new(sourceEvents, eventQueue);
+        _mcpCallStarted = new(sourceEvents, eventQueue);
+        _mcpArgumentsDelta = new(sourceEvents, eventQueue);
+        _mcpArgumentsCompleted = new(sourceEvents, eventQueue);
+        _mcpCallCompleted = new(sourceEvents, eventQueue);
+        _mcpCallFailed = new(sourceEvents, eventQueue);
+        _errorReceived = new(sourceEvents, eventQueue);
+        _rateLimitsUpdated = new(sourceEvents, eventQueue);
+        _playbackStarted = new(sourceEvents, eventQueue);
+        _playbackCompleted = new(sourceEvents, eventQueue);
+        _playbackCleared = new(sourceEvents, eventQueue);
+        _unknownProviderEvent = new(sourceEvents, eventQueue);
     }
 
-
-    private class ConversationInputTranscriptionFailedConverter(RealtimeServerUpdateConversationItemInputAudioTranscriptionFailed update)
-        : ConversationInputTranscriptionFailed
+    internal void Forward(RTICSessionEvent update)
     {
-        private readonly string _errorMessage = update.Error.Message;
-
-        public string ErrorMessage { get { return _errorMessage; } }
-
-        public ConversationInputTranscriptionFailed Base() { return this; }
-    }
-
-    private class ConversationInputTranscriptionFinishedConverter(RealtimeServerUpdateConversationItemInputAudioTranscriptionCompleted update)
-        : ConversationInputTranscriptionFinished
-    {
-        private readonly string _transcript = update.Transcript;
-
-        public string Transcript { get { return _transcript; } }
-
-        public ConversationInputTranscriptionFinished Base() { return this; }
-    }
-
-    private class ConversationItemStreamingPartAudioDeltaConverter(RealtimeServerUpdateResponseOutputAudioDelta update)
-        : ConversationItemStreamingAudioPartDelta
-    {
-        private readonly BinaryData _audio = update.Delta;
-
-        private readonly string _responseId = update.ResponseId;
-
-        private readonly string _itemId = update.ItemId;
-
-        private readonly int _contentIndex = update.ContentIndex;
-
-        public BinaryData Audio { get { return _audio; } }
-
-        public string ResponseId { get { return _responseId; } }
-
-        public string ItemId { get { return _itemId; } }
-
-        public int ContentIndex { get { return _contentIndex; } }
-
-        public ConversationItemStreamingAudioPartDelta Base() { return this; }
-    }
-
-    private class ConversationItemStreamingAudioFinishedConverter(RealtimeServerUpdateResponseOutputAudioDone update)
-        : ConversationItemStreamingAudioFinished
-    {
-        private readonly string _responseId = update.ResponseId;
-
-        private readonly string _itemId = update.ItemId;
-
-        private readonly int _contentIndex = update.ContentIndex;
-
-        public string ResponseId { get { return _responseId; } }
-
-        public string ItemId { get { return _itemId; } }
-
-        public int ContentIndex { get { return _contentIndex; } }
-
-        public ConversationItemStreamingAudioFinished Base() { return this; }
-    }
-
-    private class ConversationItemStreamingPartTranscriptDeltaConverter(RealtimeServerUpdateResponseOutputAudioTranscriptDelta update)
-        : ConversationItemStreamingTranscriptionPartDelta
-    {
-        private readonly string _itemId = update.ItemId;
-
-        private readonly string _transcript = update.Delta;
-
-        public string ItemId { get { return _itemId; } }
-
-        public string Transcript { get { return _transcript; } }
-
-        public ConversationItemStreamingTranscriptionPartDelta Base() { return this; }
-    }
-
-    private class ConversationItemStreamingStartedConverter(RealtimeServerUpdateResponseOutputItemAdded update)
-        : ConversationItemStreamingStarted
-    {
-        private readonly string _functionName =
-            update.Item is RealtimeFunctionCallItem functionCallItem ? functionCallItem.FunctionName : string.Empty;
-
-        private readonly string _itemId = GetItemId(update.Item);
-
-        public string FunctionName { get { return _functionName; } }
-
-        public string ItemId { get { return _itemId; } }
-
-        public ConversationItemStreamingStarted Base() { return this; }
-    }
-
-    private class ConversationItemStreamingFinishedConverter(RealtimeServerUpdateResponseOutputItemDone update)
-        : ConversationItemStreamingFinished
-    {
-        private readonly string _functionName =
-            update.Item is RealtimeFunctionCallItem functionCallItem ? functionCallItem.FunctionName : string.Empty;
-
-        private readonly string _itemId = GetItemId(update.Item);
-
-        public string FunctionName { get { return _functionName; } }
-
-        public string ItemId { get { return _itemId; } }
-
-        public ConversationItemStreamingFinished Base() { return this; }
-    }
-
-    private static string GetItemId(object? item)
-    {
-        return item switch
+        switch (update)
         {
-            RealtimeMessageItem messageItem => messageItem.Id,
-            RealtimeFunctionCallItem functionCallItem => functionCallItem.Id,
-            _ => string.Empty,
-        };
+            case RTICSessionCreated value: _sessionCreated.Forward(value); break;
+            case RTICSessionConfigured value: _sessionConfigured.Forward(value); break;
+            case RTICTimelineCreated value: _timelineCreated.Forward(value); break;
+            case RTICItemAdded value: _itemAdded.Forward(value); break;
+            case RTICItemCreated value: _itemCreated.Forward(value); break;
+            case RTICItemCompleted value: _itemCompleted.Forward(value); break;
+            case RTICItemRetrieved value: _itemRetrieved.Forward(value); break;
+            case RTICItemDeleted value: _itemDeleted.Forward(value); break;
+            case RTICItemTruncated value: _itemTruncated.Forward(value); break;
+            case RTICInputAudioCleared value: _inputAudioCleared.Forward(value); break;
+            case RTICInputAudioCommitted value: _inputAudioCommitted.Forward(value); break;
+            case RTICInputAudioTimedOut value: _inputAudioTimedOut.Forward(value); break;
+            case RTICInputSpeechStarted value: _inputSpeechStarted.Forward(value); break;
+            case RTICInputSpeechFinished value: _inputSpeechFinished.Forward(value); break;
+            case RTICDtmfReceived value: _dtmfReceived.Forward(value); break;
+            case RTICInputTranscriptionDelta value: _transcriptionDelta.Forward(value); break;
+            case RTICInputTranscriptionCompleted value: _transcriptionCompleted.Forward(value); break;
+            case RTICInputTranscriptionFailed value: _transcriptionFailed.Forward(value); break;
+            case RTICInputTranscriptionSegment value: _transcriptionSegment.Forward(value); break;
+            case RTICResponseStarted value: _responseStarted.Forward(value); break;
+            case RTICResponseCompleted value: _responseCompleted.Forward(value); break;
+            case RTICOutputItemStarted value: _outputItemStarted.Forward(value); break;
+            case RTICOutputItemCompleted value: _outputItemCompleted.Forward(value); break;
+            case RTICOutputContentPartStarted value: _contentPartStarted.Forward(value); break;
+            case RTICOutputContentPartCompleted value: _contentPartCompleted.Forward(value); break;
+            case RTICOutputAudioDelta value: _audioDelta.Forward(value); break;
+            case RTICOutputAudioCompleted value: _audioCompleted.Forward(value); break;
+            case RTICOutputTextDelta value: _textDelta.Forward(value); break;
+            case RTICOutputTextCompleted value: _textCompleted.Forward(value); break;
+            case RTICOutputTranscriptDelta value: _transcriptDelta.Forward(value); break;
+            case RTICOutputTranscriptCompleted value: _transcriptCompleted.Forward(value); break;
+            case RTICFunctionArgumentsDelta value: _functionArgumentsDelta.Forward(value); break;
+            case RTICFunctionArgumentsCompleted value: _functionArgumentsCompleted.Forward(value); break;
+            case RTICMcpToolsListed value: _mcpToolsListed.Forward(value); break;
+            case RTICMcpCallStarted value: _mcpCallStarted.Forward(value); break;
+            case RTICMcpCallArgumentsDelta value: _mcpArgumentsDelta.Forward(value); break;
+            case RTICMcpCallArgumentsCompleted value: _mcpArgumentsCompleted.Forward(value); break;
+            case RTICMcpCallCompleted value: _mcpCallCompleted.Forward(value); break;
+            case RTICMcpCallFailed value: _mcpCallFailed.Forward(value); break;
+            case RTICErrorReceived value: _errorReceived.Forward(value); break;
+            case RTICRateLimitsUpdated value: _rateLimitsUpdated.Forward(value); break;
+            case RTICOutputAudioPlaybackStarted value: _playbackStarted.Forward(value); break;
+            case RTICOutputAudioPlaybackCompleted value: _playbackCompleted.Forward(value); break;
+            case RTICOutputAudioPlaybackCleared value: _playbackCleared.Forward(value); break;
+            case RTICUnknownProviderEvent value: _unknownProviderEvent.Forward(value); break;
+            default:
+                throw new NotSupportedException(
+                    $"No neutral forwarder is registered for '{update.GetType().FullName}'.");
+        }
+    }
+
+    private sealed class NeutralForwarder<TEvent>
+        where TEvent : RTICSessionEvent
+    {
+        private readonly EventContainer<TEvent>? _event;
+
+        internal NeutralForwarder(
+            EventProducerCollection sourceEvents,
+            EventQueue eventQueue)
+        {
+            _event = eventQueue.ForwardFrom<TEvent>(sourceEvents);
+        }
+
+        internal void Forward(TEvent update) => _event?.Invoke(null, update);
     }
 }

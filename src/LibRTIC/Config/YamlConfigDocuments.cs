@@ -34,3 +34,24 @@ internal sealed class SessionConfigDocument
         public int? SilenceDurationMs { get; set; }
     }
 }
+
+/// <summary>
+/// Host entry document shared by RTIConsole and WinRTIC (<c>rtic_console.yaml</c>).
+/// </summary>
+internal sealed class ConsoleEntryConfigDocument
+{
+    public RealtimeClientMapping? RealtimeClient { get; set; }
+
+    public AppMapping? App { get; set; }
+
+    internal sealed class RealtimeClientMapping
+    {
+        public string? ApiConfigPath { get; set; }
+        public string? SessionConfigPath { get; set; }
+    }
+
+    internal sealed class AppMapping
+    {
+        public bool? Verbose { get; set; }
+    }
+}

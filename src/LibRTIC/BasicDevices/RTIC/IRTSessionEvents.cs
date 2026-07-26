@@ -10,6 +10,8 @@ public interface IRTSessionEvents
 
     public void ConnectingFailed(string? message = null);
 
+    public void OperationFailed(string? message = null);
+
     public void SessionStarted(string? message = null);
 
     public void SessionFinished(string? message = null);

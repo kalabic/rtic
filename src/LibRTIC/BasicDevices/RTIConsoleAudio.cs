@@ -20,9 +20,9 @@ namespace LibRTIC.BasicDevices;
 /// <para>It is tightly related to state chanage events triggered by <see cref="RTIConsole"/>.</para>
 /// <para>It is adjusting output volume or stopping playback in response to:
 /// <list type = "bullet">
-///   <item>Server VAD detecting start of user's speech, event <see cref="ConversationInputSpeechStarted"/></item>
-///   <item>Server VAD detecting end of user's speech, event <see cref="ConversationInputSpeechFinished"/></item>
-///   <item>Response started, event <see cref="ConversationResponseStarted"/></item>
+///   <item>Server VAD detecting start of user's speech, event <see cref="RTICInputSpeechStarted"/></item>
+///   <item>Server VAD detecting end of user's speech, event <see cref="RTICInputSpeechFinished"/></item>
+///   <item>Response started, event <see cref="RTICResponseStarted"/></item>
 /// </list>
 /// </para>
 /// </summary>
@@ -132,7 +132,7 @@ public abstract class RTIConsoleAudio : DisposableBase
     /// </summary>
     /// <param name="s"></param>
     /// <param name="update"></param>
-    public void HandleEvent(object? s, ConversationInputSpeechStarted update)
+    public void HandleEvent(object? s, RTICInputSpeechStarted update)
     {
         _normalVolume = Volume;
         Volume = 0.3f * _normalVolume;
@@ -143,7 +143,7 @@ public abstract class RTIConsoleAudio : DisposableBase
     /// </summary>
     /// <param name="s"></param>
     /// <param name="update"></param>
-    public void HandleEvent(object? s, ConversationInputSpeechFinished update)
+    public void HandleEvent(object? s, RTICInputSpeechFinished update)
     {
         Volume = _normalVolume;
     }
@@ -153,7 +153,7 @@ public abstract class RTIConsoleAudio : DisposableBase
     /// </summary>
     /// <param name="s"></param>
     /// <param name="update"></param>
-    public void HandleEvent(object? s, ConversationResponseStarted update)
+    public void HandleEvent(object? s, RTICResponseStarted update)
     {
         Speaker?.ClearBuffer();
     }

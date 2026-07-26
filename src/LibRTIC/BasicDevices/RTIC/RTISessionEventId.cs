@@ -9,6 +9,7 @@ public enum RTISessionEventId
     AnswerAccepted,
     MediaAccepted,
     ConnectingFailed,
+    OperationFailed,
     SessionStarted,
     SessionFinished,
     ItemStarted,

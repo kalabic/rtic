@@ -60,6 +60,9 @@ public class RTICmdLineState_WritingItem : RTIConsoleStateWithTimer
                 return stateCollection.State_Inactive;
 
             default:
+#if DEBUG
+                COWriteLine("State_WritingItem: ignoring message: " + messageType.ToString());
+#endif
                 break;
         }
 
@@ -118,5 +121,11 @@ public class RTICmdLineState_WritingItem : RTIConsoleStateWithTimer
 
             COWriteLine(message);
         }
+#if DEBUG
+        else
+        {
+            throw new NotImplementedException();
+        }
+#endif
     }
 }

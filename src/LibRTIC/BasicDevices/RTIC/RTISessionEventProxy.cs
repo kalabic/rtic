@@ -24,6 +24,11 @@ public class RTISessionEventProxy : IRTSessionEvents
         _sep.ProcessSessionEvent(RTISessionEventId.ConnectingFailed, message);
     }
 
+    public void OperationFailed(string? message = null)
+    {
+        _sep.ProcessSessionEvent(RTISessionEventId.OperationFailed, message);
+    }
+
     public void SessionStarted(string? message = null)
     {
         _sep.ProcessSessionEvent(RTISessionEventId.SessionStarted, message);
@@ -36,7 +41,11 @@ public class RTISessionEventProxy : IRTSessionEvents
 
     public void ItemStarted(string? message = null)
     {
+#if DEBUG_VERBOSE
+        _sep.ProcessSessionEvent(RTISessionEventId.ItemStarted, message);
+#else
         _sep.ProcessSessionEvent(RTISessionEventId.ItemStarted, null);
+#endif
     }
 
     public void ItemFinished(string? message = null)

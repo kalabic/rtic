@@ -4,7 +4,16 @@ using LibRTIC.Conversation.Shell;
 
 namespace LibRTIC.Conversation.Devices;
 
-
+/// <summary>
+/// Device surface for a conversation shell.
+/// Implementations:
+/// <list type="bullet">
+/// <item><b>Local</b> (single-session): owns hardware capture/playback and optional
+/// <see cref="SessionAudioOutputTask"/> — see LibRTIC_Win <c>LocalConversationDevices</c>.</item>
+/// <item><b>Proxy</b> (multi-session): uses host virtual mic/spk streams; no hardware ownership —
+/// see <see cref="ConversationDevicesProxy"/>.</item>
+/// </list>
+/// </summary>
 public interface IConversationDevices : IDisposable
 {
     public void ConnectingStarted();
@@ -29,7 +38,7 @@ public interface IConversationDevices : IDisposable
 
     public long CancelStopDisposeAll();
 
-    public void EnqueueForPlayback(ItemAttributes item, BinaryData audioData);
+    public void EnqueueForPlayback(ItemAttributes item, ReadOnlyMemory<byte> audioData);
 }
 
 

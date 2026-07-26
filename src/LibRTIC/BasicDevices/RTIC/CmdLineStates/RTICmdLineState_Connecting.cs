@@ -44,10 +44,16 @@ public class RTICmdLineState_Connecting : RTIConsoleStateWithTimer
             case RTISessionEventId.ConnectingFailed:
                 return stateCollection.State_Inactive;
 
+            case RTISessionEventId.OperationFailed:
+                return stateCollection.State_Inactive;
+
             case RTISessionEventId.SessionStarted:
                 return stateCollection.State_Answering;
 
             default:
+#if DEBUG
+                COWriteLine("State_Connecting: ignoring message: " + messageType.ToString());
+#endif
                 break;
         }
 
@@ -66,5 +72,11 @@ public class RTICmdLineState_Connecting : RTIConsoleStateWithTimer
             COWrite("\r     \r");
             COWriteLine(message);
         }
+#if DEBUG
+        else
+        {
+            throw new NotImplementedException();
+        }
+#endif
     }
 }

@@ -58,9 +58,10 @@ public partial class Program
         //
         // A collection of events unrelated to conversation itself, but to 'Updates Receiver Task' and other utilities.
         //
-        var rev = conversation.ReceiverEvents;
+        var rev = conversation.ConversationEvents;
 
-        rev.Connect<FailedToConnect>( HandleEvent );
+        rev.Connect<FailedToConnectMsg>(HandleEvent);
+        rev.Connect<FailedToOperateMsg>(HandleEvent);
         rev.Connect<TaskExceptionOccured>( HandleEvent );
         rev.Connect<ClientStartedConnecting>( HandleEvent );
 
@@ -68,20 +69,22 @@ public partial class Program
         // A collection of conversation events to listen on, invoked from a task that is not used
         // for fetching conversation updates, so it can handle application functions.
         //
-        var cev = conversation.ConversationEvents;
+        var cev = conversation.UpdatesReceiverEvents;
 
-        cev.Connect<ConversationInputSpeechStarted>(AudioOutput.HandleEvent);
-        cev.Connect<ConversationInputSpeechFinished>(AudioOutput.HandleEvent);
-        cev.Connect<ConversationResponseStarted>(AudioOutput.HandleEvent);
+        cev.Connect<RTICInputSpeechStarted>(AudioOutput.HandleEvent);
+        cev.Connect<RTICInputSpeechFinished>(AudioOutput.HandleEvent);
+        cev.Connect<RTICResponseStarted>(AudioOutput.HandleEvent);
 
-        cev.Connect<ConversationSessionStarted>( HandleEvent );
+        cev.Connect<RTICSessionCreated>( HandleEvent );
         cev.Connect<ConversationSessionFinished>( HandleEvent );
-        cev.Connect<ConversationResponseStarted>( HandleEvent );
-        cev.Connect<ConversationResponseFinished>( HandleEvent );
-        cev.Connect<ConversationInputTranscriptionFinished>( HandleEvent );
-        cev.Connect<ConversationInputTranscriptionFailed>( HandleEvent );
-        cev.Connect<ConversationItemStreamingAudioPartDelta>(HandleEvent);
-        cev.Connect<ConversationItemStreamingTranscriptionPartDelta>(HandleEvent);
+        cev.Connect<RTICResponseStarted>( HandleEvent );
+        cev.Connect<RTICResponseCompleted>( HandleEvent );
+        cev.Connect<RTICInputTranscriptionCompleted>( HandleEvent );
+        cev.Connect<RTICInputTranscriptionFailed>( HandleEvent );
+        cev.Connect<RTICOutputAudioDelta>(HandleEvent);
+        cev.Connect<RTICOutputTranscriptDelta>(HandleEvent);
+        cev.Connect<RTICOutputTextDelta>(HandleEvent);
+        cev.Connect<RTICErrorReceived>(HandleEvent);
 
         var conversationTask = conversation.RunAsync();
 
@@ -110,10 +113,16 @@ public partial class Program
         conversation.Dispose();
     }
 
-    private static void HandleEvent(object? s, FailedToConnect update)
+    private static void HandleEvent(object? s, FailedToConnectMsg update)
     {
         exitSource.Cancel();
         Output.Event.ConnectingFailed(update.Message);
+    }
+
+    private static void HandleEvent(object? s, FailedToOperateMsg update)
+    {
+        exitSource.Cancel();
+        Output.Event.OperationFailed(update.Message);
     }
 
     private static void HandleEvent(object? s, TaskExceptionOccured update)
@@ -131,7 +140,7 @@ public partial class Program
     /// </summary>
     /// <param name="s"></param>
     /// <param name="update"></param>
-    private static void HandleEvent(object? s, ConversationSessionStarted update)
+    private static void HandleEvent(object? s, RTICSessionCreated update)
     {
         // Notify console output that session has started.
         Output.Event.SessionStarted(" *\n * Session started\n * Press 'q' to quit.\n *");
@@ -159,9 +168,9 @@ public partial class Program
     /// </summary>
     /// <param name="s"></param>
     /// <param name="update"></param>
-    private static void HandleEvent(object? s, ConversationResponseStarted update)
+    private static void HandleEvent(object? s, RTICResponseStarted update)
     {
-        Output.Event.ItemStarted(null);
+        Output.Event.ItemStarted(update.ResponseId);
     }
 
     /// <summary>
@@ -169,9 +178,18 @@ public partial class Program
     /// </summary>
     /// <param name="s"></param>
     /// <param name="update"></param>
-    private static void HandleEvent(object? s, ConversationResponseFinished update) 
-    { 
-        Output.Event.ItemFinished(); 
+    private static void HandleEvent(object? s, RTICResponseCompleted update)
+    {
+        string status = update.Response.Status.ToString().ToLowerInvariant();
+        Output.Event.ItemFinished(status);
+        if (!update.IsCompleted)
+        {
+            string? error = update.Response.StatusDetails?.ErrorMessage;
+            Output.WriteLine(
+                RTMessageType.System,
+                $"Response {update.ResponseId} ended with status {status}." +
+                $"{(string.IsNullOrWhiteSpace(error) ? string.Empty : $" {error}")}");
+        }
     }
 
     /// <summary>
@@ -179,7 +197,7 @@ public partial class Program
     /// </summary>
     /// <param name="s"></param>
     /// <param name="update"></param>
-    private static void HandleEvent(object? s, ConversationInputTranscriptionFinished update)
+    private static void HandleEvent(object? s, RTICInputTranscriptionCompleted update)
     {
         if (!String.IsNullOrEmpty(update.Transcript))
         {
@@ -192,15 +210,15 @@ public partial class Program
     /// </summary>
     /// <param name="s"></param>
     /// <param name="update"></param>
-    private static void HandleEvent(object? s, ConversationInputTranscriptionFailed update)
+    private static void HandleEvent(object? s, RTICInputTranscriptionFailed update)
     {
         if (!String.IsNullOrEmpty(update.ErrorMessage))
         {
-            Output.WriteLine(RTMessageType.User, update.ErrorMessage);
+            Output.WriteLine(RTMessageType.System, update.ErrorMessage);
         }
         else
         {
-            Output.WriteLine(RTMessageType.User, "[Transcription Failed]");
+            Output.WriteLine(RTMessageType.System, "[Transcription Failed]");
         }
     }
 
@@ -209,13 +227,10 @@ public partial class Program
     /// </summary>
     /// <param name="s"></param>
     /// <param name="update"></param>
-    private static void HandleEvent(object? s, ConversationItemStreamingAudioPartDelta update)
+    private static void HandleEvent(object? s, RTICOutputAudioDelta update)
     {
-        if (update.Audio is not null)
-        {
-            var data = update.Audio.ToArray();
-            AudioOutput?.Speaker?.Write(data, 0, data.Length);
-        }
+        var data = update.Audio.ToArray();
+        AudioOutput?.Speaker?.Write(data, 0, data.Length);
     }
 
     /// <summary>
@@ -223,11 +238,26 @@ public partial class Program
     /// </summary>
     /// <param name="s"></param>
     /// <param name="update"></param>
-    private static void HandleEvent(object? s, ConversationItemStreamingTranscriptionPartDelta update)
+    private static void HandleEvent(object? s, RTICOutputTranscriptDelta update)
     {
-        if (!String.IsNullOrEmpty(update.Transcript))
+        if (!String.IsNullOrEmpty(update.Delta))
         {
-            Output.Write(RTMessageType.Agent, update.Transcript);
+            Output.Write(RTMessageType.Agent, update.Delta);
         }
+    }
+
+    private static void HandleEvent(object? s, RTICOutputTextDelta update)
+    {
+        if (!String.IsNullOrEmpty(update.Delta))
+        {
+            Output.Write(RTMessageType.Agent, update.Delta);
+        }
+    }
+
+    private static void HandleEvent(object? s, RTICErrorReceived update)
+    {
+        Output.WriteLine(
+            RTMessageType.System,
+            $"Realtime error ({update.Error.Code ?? update.Error.Kind}): {update.Error.Message}");
     }
 }

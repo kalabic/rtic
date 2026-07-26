@@ -1,20 +1,17 @@
 using AudioFormatLib;
 using AudioFormatLib.Buffers;
 using AudioFormatLib.IO;
+using DotBase.Event;
+using DotBase.Log;
 using LibRTIC.Config;
-using LibRTIC.Realtime;
+using LibRTIC.Conversation.OpenAI.Realtime;
 using LibRTIC.Conversation.UpdatesReceiver;
 using LibRTIC.MiniTaskLib;
 using LibRTIC.MiniTaskLib.Events;
-using DotBase.Log;
-using OpenAI.Realtime;
+using LibRTIC.Realtime;
 using System.Net.WebSockets;
-using static LibRTIC.Conversation.FailedToConnect;
-using DotBase.Event;
 
 namespace LibRTIC.Conversation;
-
-#pragma warning disable OPENAI002
 
 
 public class RTIConversationTask : RTIConversation
@@ -23,9 +20,6 @@ public class RTIConversationTask : RTIConversation
     {
         return new RTIConversationTask(info, cancellation);
     }
-
-    // Just in case, let's keep connection opening timeout under 20  sec.
-    private const int START_TASK_TIMEOUT = 20000;
 
     private const int STOP_TASK_TIMEOUT = 10000;
 
@@ -37,17 +31,17 @@ public class RTIConversationTask : RTIConversation
     /// All events from this _collection are (should be) forwarded to <see cref="ReceiverQueue"/>,
     /// but here made available for handling directly.
     /// </summary>
-    public override EventProducerCollection ReceiverEvents { get { return _receiverTaskEvents; } }
+    public override EventProducerCollection ConversationEvents { get { return _conversationEvents; } }
 
-    public override EventQueue ConversationEvents { get { return _receiver.ReceiverEvents; } }
+    public override EventQueue UpdatesReceiverEvents { get { return _receiver.ReceiverEvents; } }
 
     protected readonly InfoLog _info;
 
-    private CancellationTokenSource _startCanceller;
-
-    private TaskWithEvents? _networkConnectionTask = null;
-
     private TaskWithEvents? _sendAudioTask = null;
+
+    private CancellationToken _cancellation;
+
+    protected ConversationCancellation _conversationCancellation;
 
     private CancellationTokenSource? _audioCancellation = null;
 
@@ -57,39 +51,20 @@ public class RTIConversationTask : RTIConversation
 
     private IPcm16FrameInput? _internalAudioInput = null;
 
-    private RealtimeClient? _client = null;
+    private RTICUpdatesReceiver _receiver;
 
-    private RTICConfig? _options = null;
+    private EventProducerCollection _conversationEvents;
 
-    private ConversationUpdatesReceiver _receiver;
-
-    private CancellationToken _cancellation;
-
-    private object _lockRTE = new object();
-
-    private EventProducerCollection _receiverTaskEvents;
+    private int _cancelRequested = 0;
 
     protected RTIConversationTask(InfoLog info, CancellationToken cancellation)
     {
-        this._info = info;
-        this._startCanceller = new CancellationTokenSource();
-        this._receiverTaskEvents = new EventProducerCollection("ConversationUpdatesReceiverTask Events");
-        this._cancellation = cancellation;
-        this._receiver = new ConversationUpdatesReceiver(info);
-
-
-        var receiverQueue = _receiver.ReceiverEvents;
-
-        // Forward events invoked from whichever task to be handled using 'receiverQueue' task.
-        receiverQueue.ForwardFrom<ClientStartedConnecting>(_receiverTaskEvents);
-        receiverQueue.ForwardFrom<InputAudioTaskFinished>(_receiverTaskEvents);
-        receiverQueue.ForwardFrom<FailedToConnect>(_receiverTaskEvents);
-        receiverQueue.ForwardFrom<TaskExceptionOccured>(_receiverTaskEvents);
-
-        // Connect event handlers.
-        receiverQueue.Connect<InputAudioTaskFinished>(HandleEvent);
-        receiverQueue.Connect<FailedToConnect>(HandleEvent);
-        receiverQueue.Connect<EventMailboxStarted>(HandleEvent);
+        _info = info;
+        _conversationEvents = new EventProducerCollection("RTIConversationTask Events");
+        _cancellation = cancellation;
+        _conversationCancellation = new ConversationCancellation(_cancellation);
+        _receiver = new ConversationConnection(info, _conversationEvents, _conversationCancellation);
+        UpdatesReceiverEvents.Connect<RTICSessionConfigured>(StartAudioInputTask);
     }
 
     public override void ConfigureWith(RTICConfig options, IPcm16FrameOutput audioOutputFrames)
@@ -105,15 +80,14 @@ public class RTIConversationTask : RTIConversation
                 nameof(audioOutputFrames));
         }
 
-        this._options = options;
-        this._audioOutputFrames = audioOutputFrames;
+        _audioOutputFrames = audioOutputFrames;
+        _receiver.ConfigureWith(options);
     }
 
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
-            _startCanceller?.Dispose();
             _audioOutputFrames = null;
             _internalAudioInput = null;
             _internalAudioBuffer?.Dispose();
@@ -121,12 +95,7 @@ public class RTIConversationTask : RTIConversation
             _receiver.Dispose();
             _audioCancellation?.Dispose();
             _audioCancellation = null;
-            _client = null;
-
-            lock (_lockRTE)
-            {
-                _receiverTaskEvents.Dispose();
-            }
+            _conversationEvents.Dispose();
         }
 
         base.Dispose(disposing);
@@ -147,23 +116,6 @@ public class RTIConversationTask : RTIConversation
         receiverQueueTask.TaskEvents.Connect<TaskCompleted>( AssertAllTasksComplete );
         return receiverQueueTask;
     }
-
-    public override Task StartResponseAsync(string? instructions, CancellationToken cancellationToken)
-        => _receiver.StartResponseAsync(instructions, cancellationToken);
-
-    public override Task InterruptResponseAsync(CancellationToken cancellationToken)
-        => _receiver.InterruptResponseAsync(cancellationToken);
-
-    public override Task TruncateOutputItemAsync(
-        string itemId,
-        int contentIndex,
-        TimeSpan audioEndTime,
-        CancellationToken cancellationToken)
-        => _receiver.TruncateOutputItemAsync(
-            itemId,
-            contentIndex,
-            audioEndTime,
-            cancellationToken);
 
     public override void Await()
     {
@@ -192,10 +144,54 @@ public class RTIConversationTask : RTIConversation
     /// </summary>
     public override void Cancel()
     {
-        _startCanceller?.CancelAsync();
-        _internalAudioBuffer?.CloseBuffer();
-        _receiver.CancelMicrophone();
-        _receiver.FinishReceiver();
+        if (Interlocked.Exchange(ref _cancelRequested, 1) != 0)
+        {
+            return;
+        }
+
+        // CancellationTokenSource.Cancel() executes callbacks synchronously. A callback,
+        // buffer, provider, or task can regress and block indefinitely, so terminal
+        // cancellation must be signalled without borrowing the caller's thread.
+        _conversationCancellation.CancelConversation();
+
+        _ = Task.Run(RequestGracefulShutdown);
+        _ = EnforceCancellationTimeoutAsync();
+    }
+
+    private void RequestGracefulShutdown()
+    {
+        try
+        {
+            _internalAudioBuffer?.CloseBuffer();
+        }
+        catch (Exception ex)
+        {
+            _info.Warning("Failed to close the conversation audio buffer.", ex);
+        }
+
+        try
+        {
+            _receiver.FinishReceiver();
+        }
+        catch (Exception ex)
+        {
+            _info.Warning("Failed to initiate graceful conversation shutdown.", ex);
+        }
+    }
+
+    private async Task EnforceCancellationTimeoutAsync()
+    {
+        await Task.Delay(STOP_TASK_TIMEOUT).ConfigureAwait(false);
+
+        TaskWithEvents? awaiter = _receiver.GetAwaiter();
+        if (awaiter is not null && !awaiter.IsCompleted)
+        {
+            _info.Warning(
+                $"Conversation shutdown did not complete within {STOP_TASK_TIMEOUT} ms; " +
+                "closing its event mailbox.");
+            _conversationCancellation.CancelWebSocket();
+            _receiver.CloseMailbox();
+        }
     }
 
     /// <summary>
@@ -207,10 +203,6 @@ public class RTIConversationTask : RTIConversation
     public override List<TaskWithEvents> GetTaskList()
     {
         List<TaskWithEvents> list = new();
-        if (_networkConnectionTask is not null)
-        {
-            list.Add(_networkConnectionTask);
-        }
         if (_sendAudioTask is not null)
         {
             list.Add(_sendAudioTask);
@@ -237,149 +229,20 @@ public class RTIConversationTask : RTIConversation
     }
 
     /// <summary>
-    /// Throws exception if updates receiver task already exists.
-    /// </summary>
-    /// <exception cref="InvalidOperationException"></exception>
-    private void StartNetworkConnectionTask()
-    {
-        if (_networkConnectionTask is null)
-        {
-            _receiver.DelayedAction(NetworkConnectionWatchdog, START_TASK_TIMEOUT);
-
-            _networkConnectionTask = new ActionTask(_info, NetworkConnectionEntry );
-            _networkConnectionTask.TaskEvents.Connect<TaskExceptionOccured>( HandleEvent );
-            _networkConnectionTask.Start();
-        }
-        else
-        {
-            throw new InvalidOperationException("Network Connection task already created.");
-        }
-    }
-
-    /// <summary>
-    /// Invoked <see cref="START_TASK_TIMEOUT"/> miliseconds after network task was started to check
-    /// if connection with server was established or not.
-    /// </summary>
-    private void NetworkConnectionWatchdog()
-    {
-        if (!_receiver.IsWebSocketOpen)
-        {
-            _startCanceller.Cancel();
-        }
-    }
-
-    /// <summary>
-    /// Entry for a task that establishes network connection with the server and receives conversation updates.
-    /// <para>Conversation updates are enqued into main message queue and application shoould read them using it.</para>
-    /// </summary>
-    /// <param name="networkTaskCancellation"></param>
-    /// <exception cref="InvalidOperationException"></exception>
-    private void NetworkConnectionEntry(CancellationToken networkTaskCancellation)
-        => NetworkConnectionEntryAsync(networkTaskCancellation).GetAwaiter().GetResult();
-
-    private async Task NetworkConnectionEntryAsync(CancellationToken networkTaskCancellation)
-    {
-        if (_client is not null)
-        {
-            throw new InvalidOperationException("Updates receiver object is not reusable.");
-        }
-
-        if (_options is null)
-        {
-            FailedToConnect(ErrorStatus.EndpointOptionsMissing, "Realtime endpoint API options are missing.");
-            return;
-        }
-
-        ClientStartedConnecting(_options.Provider.Type);
-
-        RealtimeSessionClient? session = null;
-        try
-        {
-            RealtimeClientFactory.StartedRealtimeSession startedSession =
-                await RealtimeClientFactory.StartConversationSessionAsync(
-                    _options.Provider,
-                    _startCanceller.Token).ConfigureAwait(false);
-
-            if (startedSession is null)
-            {
-                FailedToConnect(
-                    ErrorStatus.FailedToConfigure,
-                    "Failed to configure OpenAI's realtime client from provided endpoint API options.");
-                return;
-            }
-
-            _client = startedSession.Client;
-            session = startedSession.Session;
-            var options = RealtimeSessionOptionsFactory.Create(_options.Session);
-            await session.ConfigureConversationSessionAsync(
-                options,
-                _startCanceller.Token).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException ex)
-        {
-            if (!_startCanceller.IsCancellationRequested)
-            {
-                // 'startWatchdog' did not trigger cancellation, so reason for exception cannot be clearly known.
-                FailedToConnect(ErrorStatus.Unknown, "Network connection canceled for unknown reason.\n" + TaskTool.BuildMultiLineExceptionErrorString(ex));
-            }
-            else if (networkTaskCancellation.IsCancellationRequested || _cancellation.IsCancellationRequested)
-            {
-                // Cancellation because some of wait handles observed by 'startWatchdog' were triggered.
-                FailedToConnect(ErrorStatus.ConnectionCanceled, "Network connection canceled.");
-            }
-            else
-            {
-                // Cancellation because 'START_TASK_TIMEOUT' used by 'startWatchdog' was triggered.
-                FailedToConnect(ErrorStatus.ServerDidNotRespond, "Network connection canceled because server did not respond in time.");
-            }
-
-            session?.Dispose();
-            return;
-        }
-        catch (WebSocketException ex)
-        {
-            //
-            // When OpenAI.RealtimeConversation client gives up, it will throw here.
-            //
-            session?.Dispose();
-            FailedToConnect(ErrorStatus.ServerDidNotRespond, TaskTool.BuildMultiLineExceptionErrorString(ex));
-            return;
-        }
-
-        _receiver.SetSession(session);
-
-        // 'Session Started Update' event is used to start sending microphone input to the server.
-        if (_audioOutputFrames is not null)
-        {
-            _receiver.ReceiverEvents.Connect<ConversationSessionConfigured>(StartAudioInputTask);
-        }
-
-        _receiver.ReceiveUpdates(networkTaskCancellation);
-    }
-
-    /// <summary>
-    /// Invoked as an event handler for <see cref="ConversationSessionConfigured"/> that is connected to this method if
+    /// Invoked as an event handler for <see cref="RTICSessionConfigured"/> that is connected to this method if
     /// function <see cref="NetworkConnectionEntry"/> has managed to connect with the server.
     /// </summary>
     /// <exception cref="InvalidOperationException"></exception>
-    private void StartAudioInputTask(object? sender, ConversationSessionConfigured update)
+    private void StartAudioInputTask(object? sender, RTICSessionConfigured update)
     {
+        if (_sendAudioTask is not null)
+        {
+            return;
+        }
+
         if (_receiver is null)
         {
             throw new InvalidOperationException("Updates receiver object does not exist.");
-        }
-        if (_networkConnectionTask is null)
-        {
-            throw new InvalidOperationException("Network Connection task does not exist.");
-        }
-        else if (_networkConnectionTask.Status != TaskStatus.Running)
-        {
-            throw new InvalidOperationException("Network Connection task is not running.");
-        }
-
-        if (_sendAudioTask is not null)
-        {
-            throw new InvalidOperationException("Send audio task already created.");
         }
 
         _audioCancellation = CancellationTokenSource.CreateLinkedTokenSource(_receiver.Cancellation.MicrophoneToken, _cancellation);
@@ -398,8 +261,12 @@ public class RTIConversationTask : RTIConversation
         // A task that reads input audio from intermediate buffer and sends it to the server.
         //
         _sendAudioTask = new ActionTask(_info, SendAudioInputTask );
+#if DEBUG
+        _sendAudioTask.SetLabel("Send Audio");
+#endif
         _sendAudioTask.TaskEvents.ConnectAsync<TaskCompleted>(AudioInputFinished);
         _sendAudioTask.Start();
+        _receiver.SessionState.InputAudioRunning = true;
 
         _receiver.RepeatAction(InputAudioAction, INPUT_AUDIO_ACTION_PERIOD);
     }
@@ -414,7 +281,6 @@ public class RTIConversationTask : RTIConversation
         if ((_internalAudioBuffer is not null) && (_audioCancellation is not null))
         {
             _receiver.SendInputAudio(_internalAudioBuffer.Output.Stream, _audioCancellation.Token);
-            _receiver.ClearInputAudio();
         }
     }
 
@@ -473,38 +339,20 @@ public class RTIConversationTask : RTIConversation
     /// </summary>
     private void AudioInputFinished(object? s, TaskCompleted ev)
     {
-        InvokeReceiverTaskEvent(new InputAudioTaskFinished());
-    }
-
-    /// <summary>
-    /// Forwarded to <see cref="HandleEvent(object?,FailedToConnect)"/>.
-    /// </summary>
-    private void FailedToConnect(FailedToConnect.ErrorStatus errorStatus, string message)
-    {
-        InvokeReceiverTaskEvent(new FailedToConnect(errorStatus, message));
-    }
-
-    private void ClientStartedConnecting(RTICProviderType providerType)
-    {
-        InvokeReceiverTaskEvent(new ClientStartedConnecting(providerType));
+        _receiver.SessionState.InputAudioRunning = false;
+        InvokeConversationEvent(new InputAudioTaskFinished());
     }
 
     private void TaskExceptionOccurred(Exception ex)
     {
-        InvokeReceiverTaskEvent(new TaskExceptionOccured(ex));
+        InvokeConversationEvent(new TaskExceptionOccured(ex));
     }
 
-    private void InvokeReceiverTaskEvent<TMessage>(TMessage message)
+    private void InvokeConversationEvent<TMessage>(TMessage message)
     {
         try
         {
-            lock (_lockRTE)
-            {
-                if (!_receiverTaskEvents.IsComplete)
-                {
-                    _receiverTaskEvents.Invoke(message);
-                }
-            }
+            _conversationEvents.Invoke(message);
         }
         catch (Exception ex)
         {
@@ -512,42 +360,21 @@ public class RTIConversationTask : RTIConversation
         }
     }
 
-    /// <summary>
-    /// Entry for <see cref="EventMailboxStarted"/> event notification.
-    /// </summary>
-    private void HandleEvent(object? sender, EventMailboxStarted update)
-    {
-        StartNetworkConnectionTask();
-    }
-
-    /// <summary>
-    /// Forwarded from <see cref="AudioInputFinished"/>.
-    /// </summary>
-    private void HandleEvent(object? sender, InputAudioTaskFinished update)
-    {
-        _receiver.FinishReceiver(); // This should start graceful shutdown.
-        InternalCancelStopDisposeAll();
-        _receiver.CloseMailbox(); // The end.
-    }
-
-    /// <summary>
-    /// Forwarded from <see cref="FailedToConnect"/>.
-    /// </summary>
-    private void HandleEvent(object? sender, FailedToConnect update)
-    {
-        InternalCancelStopDisposeAll();
-        _receiver.CloseMailbox(); // The end.
-    }
-    
-    public void HandleEvent(object? sender, TaskExceptionOccured update)
-    {
-        Cancel();
-        _info.Error("Conversation task failed.", update.Exception);
-    }
-
     private void InternalCancelStopDisposeAll()
     {
         var taskList = GetTaskList();
+#if !DEBUG
         TaskTool.CancelAndWaitAll(taskList, STOP_TASK_TIMEOUT);
+#else
+        long finishMs = TaskTool.CancelAndWaitAll(taskList, STOP_TASK_TIMEOUT);
+        if (finishMs > 0)
+        {
+            _info.Info($"It took {finishMs} ms to close session.");
+        }
+        else if (finishMs < 0)
+        {
+            _info.Error("Failed to finish session. Some conversation receiver tasks still running.");
+        }
+#endif
     }
 }

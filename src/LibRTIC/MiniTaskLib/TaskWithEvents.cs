@@ -7,6 +7,12 @@ namespace LibRTIC.MiniTaskLib;
 
 public abstract class TaskWithEvents : TaskBase
 {
+#if DEBUG_UNDISPOSED
+    public static int UNDISPOSED_COUNT = 0;
+
+    public static int INSTANCE_COUNT = 0;
+#endif
+
     private bool _disposed = false;
 
     public EventProducerCollection TaskEvents { get { return _taskEvents; } }
@@ -41,6 +47,11 @@ public abstract class TaskWithEvents : TaskBase
         // TODO: Still considering that CancellationToken.None might be better for base class. WIP
         : base(cancellation.Token, TaskCreationOptions.LongRunning)
     {
+#if DEBUG_UNDISPOSED
+        Interlocked.Increment(ref UNDISPOSED_COUNT);
+        Interlocked.Increment(ref INSTANCE_COUNT);
+#endif
+
         _info = info;
         _cancellationTokenSource = cancellation;
         _taskEvents = new("TaskWithEvents Events");
@@ -50,6 +61,17 @@ public abstract class TaskWithEvents : TaskBase
 
         _taskComplete = ContinueWith( HandleTaskComplete );
     }
+
+#if DEBUG_UNDISPOSED
+    ~TaskWithEvents()
+    {
+        Interlocked.Decrement(ref INSTANCE_COUNT);
+        if (!_disposed)
+        {
+            throw new InvalidOperationException("Not disposed properly.");
+        }
+    }
+#endif
 
     public Task TaskAwaiter() 
     { 
@@ -77,6 +99,13 @@ public abstract class TaskWithEvents : TaskBase
 
     override protected void Dispose(bool disposing)
     {
+#if DEBUG_UNDISPOSED
+        if (!_disposed && !disposing)
+        {
+            throw new InvalidOperationException("Not disposed properly.");
+        }
+#endif
+
         // Release managed resources.
         if (disposing)
         {
@@ -85,10 +114,23 @@ public abstract class TaskWithEvents : TaskBase
                 if (!_disposed)
                 {
                     _disposed = true;
+#if DEBUG_UNDISPOSED
+                    Interlocked.Decrement(ref UNDISPOSED_COUNT);
+#endif
                 }
 
                 _taskEvents.Dispose();
                 _cancellationTokenSource.Dispose();
+#if DEBUG_VERBOSE_DISPOSE
+                if (String.IsNullOrEmpty(_label))
+                {
+                    _info.Event("ObjectDisposed", "Disposed object", this);
+                }
+                else
+                {
+                    _info.Event("ObjectDisposed", _label);
+                }
+#endif
             }
         }
 
@@ -129,6 +171,12 @@ public abstract class TaskWithEvents : TaskBase
                 _info.Warning("Stop task failed while waiting for " + _label, ex);
             }
         }, stopActionCancellation);
+#if DEBUG
+        stopTask.SetLabel("Stop Task For [" + _label + "]");
+#if DEBUG_VERBOSE
+        _info.Info("Task created: " + stopTask._label);
+#endif
+#endif
         stopTask.Start();
         return stopTask;
     }
@@ -174,6 +222,9 @@ public abstract class TaskWithEvents : TaskBase
         {
             NotifyExceptionOccurred(ex);
         }
+#if DEBUG_VERBOSE
+        _info.Event("TaskFinished", _label, this);
+#endif
     }
 
     private void HandleTaskComplete(Task task)

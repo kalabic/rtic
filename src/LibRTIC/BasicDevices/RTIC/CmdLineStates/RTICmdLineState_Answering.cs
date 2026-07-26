@@ -42,6 +42,9 @@ public class RTICmdLineState_Answering : RTIConsoleStateWithTimer
     {
         switch (messageType)
         {
+            case RTISessionEventId.OperationFailed:
+                return stateCollection.State_Inactive;
+
             case RTISessionEventId.ItemStarted:
                 return stateCollection.State_WritingItem;
 
@@ -49,6 +52,9 @@ public class RTICmdLineState_Answering : RTIConsoleStateWithTimer
                 return stateCollection.State_Inactive;
 
             default:
+#if DEBUG
+                COWriteLine("RTICallState_Answering: ignoring message: " + messageType.ToString());
+#endif
                 break;
         }
 
@@ -67,5 +73,11 @@ public class RTICmdLineState_Answering : RTIConsoleStateWithTimer
             COWrite("\r     \r");
             COWriteLine(message);
         }
+#if DEBUG
+        else
+        {
+            throw new NotImplementedException();
+        }
+#endif
     }
 }

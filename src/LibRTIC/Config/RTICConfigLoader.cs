@@ -27,11 +27,96 @@ public static class RTICConfigLoader
     public const string DefaultApiConfigFileName = "rtic_api.yaml";
     public const string LegacyApiConfigFileName = "rtic_api.json";
 
+    /// <summary>Conventional console host entry file name (RTIConsole / WinRTIC).</summary>
+    public const string DefaultConsoleEntryFileName = RTICConsoleHostArguments.DefaultConsoleEntryFileName;
+
     private static readonly IDeserializer Deserializer = new DeserializerBuilder()
         .WithNamingConvention(UnderscoredNamingConvention.Instance)
         .WithDuplicateKeyChecking()
         .WithEnforceNullability()
         .Build();
+
+    /// <summary>
+    /// Loads an authoritative console host entry file (e.g. <c>rtic_console.yaml</c>),
+    /// resolves <c>realtime_client</c> paths relative to that file, and loads provider/session YAML.
+    /// Does not fall back to environment variables or CWD auto-discovery.
+    /// </summary>
+    public static RTICConsoleConfigLoadResult LoadFromConsoleEntryFile(string entryPath)
+    {
+        var diagnostics = new List<ConfigDiagnostic>();
+        if (string.IsNullOrWhiteSpace(entryPath))
+        {
+            Add(diagnostics, "entry_path_required", null, "$", null, "A console host entry YAML file is required.");
+            return new RTICConsoleConfigLoadResult(null, RTICConsoleAppOptions.Default, null, null, diagnostics);
+        }
+
+        string fullEntryPath = Path.GetFullPath(entryPath);
+        if (!TryDeserialize<ConsoleEntryConfigDocument>(fullEntryPath, diagnostics, out ConsoleEntryConfigDocument? document, out YamlMarks marks))
+        {
+            return new RTICConsoleConfigLoadResult(null, RTICConsoleAppOptions.Default, null, null, diagnostics);
+        }
+
+        ConsoleEntryConfigDocument.RealtimeClientMapping? client = document!.RealtimeClient;
+        if (client is null)
+        {
+            Required(diagnostics, fullEntryPath, "$.realtime_client", marks);
+            return new RTICConsoleConfigLoadResult(null, RTICConsoleAppOptions.Default, null, null, diagnostics);
+        }
+
+        string? apiRelative = RequiredString(client.ApiConfigPath, diagnostics, fullEntryPath, "$.realtime_client.api_config_path", marks);
+        string? sessionRelative = OptionalString(client.SessionConfigPath, diagnostics, fullEntryPath, "$.realtime_client.session_config_path", marks);
+
+        RTICConsoleAppOptions app = RTICConsoleAppOptions.Default;
+        if (document.App is { } appMapping)
+        {
+            bool verbose = false;
+            if (marks.Contains("$.app.verbose"))
+            {
+                if (appMapping.Verbose is null)
+                {
+                    Add(diagnostics, "wrong_type", fullEntryPath, "$.app.verbose", marks.At("$.app.verbose"), "A boolean is required.");
+                }
+                else
+                {
+                    verbose = appMapping.Verbose.Value;
+                }
+            }
+
+            app = new RTICConsoleAppOptions(verbose);
+        }
+
+        if (HasErrors(diagnostics) || apiRelative is null)
+        {
+            return new RTICConsoleConfigLoadResult(null, app, null, null, diagnostics);
+        }
+
+        string entryDirectory = Path.GetDirectoryName(fullEntryPath) ?? Directory.GetCurrentDirectory();
+        string resolvedApi = ResolvePathAgainstEntry(entryDirectory, apiRelative);
+        string? resolvedSession = sessionRelative is null
+            ? null
+            : ResolvePathAgainstEntry(entryDirectory, sessionRelative);
+
+        RTICConfigLoadResult composed = LoadFile(resolvedApi, resolvedSession);
+        diagnostics.AddRange(composed.Diagnostics);
+
+        return new RTICConsoleConfigLoadResult(
+            composed.Config,
+            app,
+            resolvedApi,
+            resolvedSession,
+            diagnostics);
+    }
+
+    private static string ResolvePathAgainstEntry(string entryDirectory, string configuredPath)
+    {
+        string expanded = Environment.ExpandEnvironmentVariables(configuredPath.Trim());
+        if (Path.IsPathRooted(expanded))
+        {
+            return Path.GetFullPath(expanded);
+        }
+
+        return Path.GetFullPath(Path.Combine(entryDirectory, expanded));
+    }
 
     public static RTICConfigLoadResult LoadAuto(string? sessionPath = null, string? workingDirectory = null)
     {
@@ -240,6 +325,7 @@ public static class RTICConfigLoader
             {
                 "$.max_output_tokens" or "$.server_vad.prefix_padding_ms" or "$.server_vad.silence_duration_ms" => ScalarKind.Integer,
                 "$.server_vad.threshold" => ScalarKind.Float,
+                "$.app.verbose" => ScalarKind.Boolean,
                 _ => ScalarKind.String,
             };
             bool valid = kind switch
@@ -247,9 +333,21 @@ public static class RTICConfigLoader
                 ScalarKind.String => IsStringScalar(scalar),
                 ScalarKind.Integer => scalar.Style == ScalarStyle.Plain && int.TryParse(scalar.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out _),
                 ScalarKind.Float => scalar.Style == ScalarStyle.Plain && float.TryParse(scalar.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out float value) && float.IsFinite(value),
+                ScalarKind.Boolean => scalar.Style == ScalarStyle.Plain && bool.TryParse(scalar.Value, out _),
                 _ => false,
             };
-            if (!valid) Add(diagnostics, "wrong_type", file, path, scalar.Start, kind == ScalarKind.String ? "A string is required." : kind == ScalarKind.Integer ? "An integer is required." : "A finite number is required.");
+            if (!valid)
+            {
+                string message = kind switch
+                {
+                    ScalarKind.String => "A string is required.",
+                    ScalarKind.Integer => "An integer is required.",
+                    ScalarKind.Float => "A finite number is required.",
+                    ScalarKind.Boolean => "A boolean is required.",
+                    _ => "Invalid scalar type.",
+                };
+                Add(diagnostics, "wrong_type", file, path, scalar.Start, message);
+            }
         }
         return !HasErrors(diagnostics);
     }
@@ -278,7 +376,7 @@ public static class RTICConfigLoader
     private static Mark? MarkOf(ParsingEvent? e) => e?.Start;
     private static bool IsDefaultTag(NodeEvent node) => string.IsNullOrEmpty(node.Tag.ToString()) || node.Tag.ToString() == "?";
 
-    private enum ScalarKind { String, Integer, Float }
+    private enum ScalarKind { String, Integer, Float, Boolean }
 
     private sealed class YamlMarks
     {
