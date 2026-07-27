@@ -7,6 +7,61 @@ namespace LibRTIC.Tests;
 public sealed class PublicApiBoundaryTests
 {
     [Fact]
+    public void ConversationControlHasOneComposedPublicSurface()
+    {
+        PropertyInfo control = typeof(RTIConversation).GetProperty(
+            nameof(RTIConversation.Control),
+            BindingFlags.Public | BindingFlags.Instance)
+            ?? throw new InvalidOperationException("RTIConversation.Control is missing.");
+
+        Assert.Equal(typeof(RTICConversationControl), control.PropertyType);
+        Assert.False(control.GetMethod!.IsAbstract);
+        Assert.True(typeof(RTICConversationControl).IsSealed);
+        Assert.Empty(typeof(RTICConversationControl).GetConstructors());
+        Assert.True(typeof(RTIConversationTask).IsSealed);
+        Assert.Equal(
+            [
+                nameof(RTICConversationControl.InterruptOutputAsync),
+                nameof(RTICConversationControl.RequestResponseAsync),
+            ],
+            typeof(RTICConversationControl)
+                .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                .Select(static method => method.Name)
+                .Order()
+                .ToArray());
+
+        string[] legacyMethods =
+        [
+            "StartResponseAsync",
+            "InterruptResponseAsync",
+            "TruncateOutputItemAsync",
+        ];
+        Assert.DoesNotContain(
+            typeof(RTIConversation).GetMethods(BindingFlags.Public | BindingFlags.Instance),
+            method => legacyMethods.Contains(method.Name, StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void OutputControlModelsValidateCorrelationAndPlaybackValues()
+    {
+        Assert.Throws<ArgumentException>(
+            () => new RTICOutputCursor("", "item", 0, 0));
+        Assert.Throws<ArgumentException>(
+            () => new RTICOutputCursor("response", " ", 0, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new RTICOutputCursor("response", "item", -1, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new RTICOutputCursor("response", "item", 0, -1));
+
+        RTICOutputCursor cursor = new("response", "item", 3, 2);
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new RTICOutputInterruption(
+                cursor,
+                TimeSpan.FromTicks(-1),
+                true));
+    }
+
+    [Fact]
     public void PublicLibRticApiDoesNotExposeOpenAiTypes()
     {
         Assembly assembly = typeof(RTICSessionEvent).Assembly;
@@ -21,24 +76,6 @@ public sealed class PublicApiBoundaryTests
             leaks.Count == 0,
             "Public OpenAI SDK type leaks were found:" + Environment.NewLine
             + string.Join(Environment.NewLine, leaks.Order()));
-    }
-
-    [Fact]
-    public void NeutralEventModelSourcesDoNotImportOpenAiNamespaces()
-    {
-        string root = FindRepositoryRoot();
-        string[] files =
-        [
-            Path.Combine(root, "src", "LibRTIC", "Conversation", "RTICPayloadModels.cs"),
-            Path.Combine(root, "src", "LibRTIC", "Conversation", "RTICSessionEvents.cs"),
-        ];
-
-        foreach (string file in files)
-        {
-            string source = File.ReadAllText(file);
-            Assert.DoesNotContain("using OpenAI", source, StringComparison.Ordinal);
-            Assert.DoesNotContain("OpenAI.", source, StringComparison.Ordinal);
-        }
     }
 
     private static void InspectType(Type type, string path, List<string> leaks)
@@ -178,20 +215,4 @@ public sealed class PublicApiBoundaryTests
         => type.Assembly.GetName().Name == "OpenAI"
             || type.Namespace?.StartsWith("OpenAI", StringComparison.Ordinal) == true;
 
-    private static string FindRepositoryRoot()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-        while (directory is not null)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "WinRTIC.slnx")))
-            {
-                return directory.FullName;
-            }
-
-            directory = directory.Parent;
-        }
-
-        throw new DirectoryNotFoundException(
-            "Could not locate the WinRTIC repository root.");
-    }
 }

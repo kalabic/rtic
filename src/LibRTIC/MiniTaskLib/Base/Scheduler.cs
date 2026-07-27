@@ -1,58 +1,183 @@
-﻿using DotBase.Core;
-using System.Collections.Concurrent;
+using DotBase.Core;
+using System.Diagnostics;
 
 namespace LibRTIC.MiniTaskLib.Base;
 
-class Scheduler : DisposableBase
+internal sealed class Scheduler : DisposableBase
 {
-    private object _lock = new object();
+    private readonly object _lock = new();
 
-    private readonly ConcurrentDictionary<Action, ScheduledTask> _scheduledTasks = new ConcurrentDictionary<Action, ScheduledTask>();
+    private readonly HashSet<ScheduledTask> _scheduledTasks =
+        new(ReferenceEqualityComparer.Instance);
 
-    protected override void Dispose(bool disposing)
+    private readonly Action<Exception>? _faultSink;
+
+    private readonly TimeProvider _timeProvider;
+
+    private bool _disposeStarted;
+
+    internal int ScheduledCount
     {
-        if (disposing)
+        get
         {
             lock (_lock)
             {
-                foreach (var task in _scheduledTasks.Values )
-                {
-                    task.Dispose();
-                }
-                _scheduledTasks.Clear();
+                return _scheduledTasks.Count;
             }
+        }
+    }
+
+    internal Scheduler(
+        TimeProvider timeProvider,
+        Action<Exception>? faultSink = null)
+    {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+
+        _timeProvider = timeProvider;
+        _faultSink = faultSink;
+    }
+
+    internal ScheduledTask? Execute(
+        Action action,
+        int timeoutMs,
+        bool repeat = false)
+    {
+        ScheduledTask? task = null;
+
+        try
+        {
+            lock (_lock)
+            {
+                if (_disposeStarted || IsDisposed)
+                {
+                    return null;
+                }
+
+                task = new ScheduledTask(
+                    action,
+                    timeoutMs,
+                    repeat,
+                    _timeProvider);
+                _scheduledTasks.Add(task);
+                task.Start(TaskScheduler.Default);
+            }
+        }
+        catch
+        {
+            if (task is not null)
+            {
+                lock (_lock)
+                {
+                    _scheduledTasks.Remove(task);
+                }
+
+                task.AbandonAfterStartFailure();
+            }
+
+            throw;
+        }
+
+        _ = ObserveCompletionAsync(task);
+        return task;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (!disposing)
+        {
+            base.Dispose(disposing);
+            return;
+        }
+
+        ScheduledTask[] tasks;
+
+        lock (_lock)
+        {
+            if (_disposeStarted)
+            {
+                return;
+            }
+
+            _disposeStarted = true;
+            tasks = _scheduledTasks.ToArray();
+        }
+
+        foreach (ScheduledTask task in tasks)
+        {
+            _ = task.RequestCancellation();
         }
 
         base.Dispose(disposing);
     }
 
-    public void Execute(Action action, int timeoutMs, bool repeat = false)
+    private async Task ObserveCompletionAsync(ScheduledTask task)
     {
+        Exception? fault = null;
+
+        try
+        {
+            await task.Completion.ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (task.Completion.IsCanceled)
+        {
+            // Cancellation requested by Scheduler.Dispose is normal completion.
+        }
+        catch (Exception ex)
+        {
+            fault = ex;
+        }
+
+        try
+        {
+            await task.CancellationCompletion.ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            fault = fault is null
+                ? ex
+                : new AggregateException(fault, ex);
+        }
+
         lock (_lock)
         {
-            if (!IsDisposed)
-            {
-                var task = new ScheduledTask(action, timeoutMs, repeat);
-                if (!repeat)
-                {
-#pragma warning disable CS8622 // Nullability of reference types in type of parameter doesn't match the target delegate (possibly because of nullability attributes).
-                    task._taskComplete += RemoveTask;
-#pragma warning restore CS8622
-                }
-                _scheduledTasks.TryAdd(action, task);
-                task._timer.Start();
-            }
+            _scheduledTasks.Remove(task);
+        }
+
+        try
+        {
+            task.Dispose();
+        }
+        catch (Exception ex)
+        {
+            fault = fault is null
+                ? ex
+                : new AggregateException(fault, ex);
+        }
+
+        if (fault is not null)
+        {
+            ReportFault(fault);
         }
     }
 
-    private void RemoveTask(object sender, EventArgs e)
+    private void ReportFault(Exception exception)
     {
-        var task = (ScheduledTask)sender;
-#pragma warning disable CS8622 // Nullability of reference types in type of parameter doesn't match the target delegate (possibly because of nullability attributes).
-        task._taskComplete -= RemoveTask;
-#pragma warning restore CS8622
-        ScheduledTask? deleted;
-        _scheduledTasks.TryRemove(task._action, out deleted);
-        task.Dispose();
+        if (_faultSink is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _faultSink(exception);
+        }
+        catch (Exception sinkException)
+        {
+            Trace.TraceError(
+                "MiniTaskLib scheduler fault sink failed. Schedule fault: {0}. " +
+                "Sink fault: {1}.",
+                exception,
+                sinkException);
+        }
     }
 }

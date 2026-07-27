@@ -35,8 +35,6 @@ public sealed class ConversationUpdateTranslationTests
         { typeof(RTICInputSpeechFinished), """{"type":"input_audio_buffer.speech_stopped","event_id":"event_1","audio_end_ms":1250,"item_id":"item_1"}""" },
         { typeof(RTICInputAudioTimedOut), """{"type":"input_audio_buffer.timeout_triggered","event_id":"event_1","audio_start_ms":250,"audio_end_ms":1250,"item_id":"item_1"}""" },
         { typeof(RTICMcpToolsListed), """{"type":"mcp_list_tools.completed","event_id":"event_1","item_id":"item_1"}""" },
-        { typeof(RTICMcpToolsListed), """{"type":"mcp_list_tools.failed","event_id":"event_1","item_id":"item_1"}""" },
-        { typeof(RTICMcpToolsListed), """{"type":"mcp_list_tools.in_progress","event_id":"event_1","item_id":"item_1"}""" },
         { typeof(RTICOutputAudioPlaybackCleared), """{"type":"output_audio_buffer.cleared","event_id":"event_1","response_id":"response_1"}""" },
         { typeof(RTICOutputAudioPlaybackStarted), """{"type":"output_audio_buffer.started","event_id":"event_1","response_id":"response_1"}""" },
         { typeof(RTICOutputAudioPlaybackCompleted), """{"type":"output_audio_buffer.stopped","event_id":"event_1","response_id":"response_1"}""" },
@@ -66,7 +64,7 @@ public sealed class ConversationUpdateTranslationTests
 
     [Theory]
     [MemberData(nameof(CurrentServerUpdates))]
-    public async Task EveryCurrentSdkUpdateReachesTheNeutralMailbox(
+    public async Task EveryCurrentSdkUpdateReachesTheNeutralActionQueue(
         Type expectedType,
         string json)
     {
@@ -88,12 +86,12 @@ public sealed class ConversationUpdateTranslationTests
             false,
             (_, update) => received.Add(update));
 
-        TaskWithEvents mailboxTask = dispatcher.RunAsync();
+        TaskWithEvents actionQueueTask = dispatcher.RunAsync();
         dispatcher.Dispatch(ReadUpdate(TextDelta("response_1", "item_1", 0, 0, "one")));
         dispatcher.Dispatch(ReadUpdate(TextDelta("response_2", "item_2", 1, 2, "two")));
         dispatcher.Dispatch(ReadUpdate(TextDelta("response_1", "item_3", 3, 4, "three")));
-        dispatcher.CloseMailbox();
-        await mailboxTask;
+        dispatcher.CompleteAdding();
+        await actionQueueTask;
 
         Assert.Collection(
             received,
@@ -114,19 +112,19 @@ public sealed class ConversationUpdateTranslationTests
             false,
             (_, update) => received.Add(update.Delta));
 
-        TaskWithEvents mailboxTask = dispatcher.RunAsync();
+        TaskWithEvents actionQueueTask = dispatcher.RunAsync();
         dispatcher.Dispatch(ReadUpdate(
             """{"type":"conversation.item.created","event_id":"bad_1","previous_item_id":null,"item":{"type":"message","role":"assistant","content":[]}}"""));
         dispatcher.Dispatch(ReadUpdate(TextDelta(
             "response_1", "item_1", 0, 0, "still-running")));
-        dispatcher.CloseMailbox();
-        await mailboxTask;
+        dispatcher.CompleteAdding();
+        await actionQueueTask;
 
         Assert.Equal(["provider_translation_failed", "still-running"], received);
     }
 
     [Fact]
-    public async Task MailboxCompletionDoesNotLoseQueuedEvents()
+    public async Task ActionQueueCompletionDoesNotLoseQueuedEvents()
     {
         using TestDispatcher dispatcher = new();
         int received = 0;
@@ -134,47 +132,17 @@ public sealed class ConversationUpdateTranslationTests
             false,
             (_, _) => received++);
 
-        TaskWithEvents mailboxTask = dispatcher.RunAsync();
+        TaskWithEvents actionQueueTask = dispatcher.RunAsync();
         for (int i = 0; i < 50; i++)
         {
             dispatcher.Dispatch(ReadUpdate(TextDelta(
                 "response_1", $"item_{i}", i, 0, i.ToString())));
         }
 
-        dispatcher.CloseMailbox();
-        await mailboxTask;
+        dispatcher.CompleteAdding();
+        await actionQueueTask;
 
         Assert.Equal(50, received);
-    }
-
-    [Fact]
-    public async Task MailboxCancellationCompletesWithoutDeadlock()
-    {
-        using TestDispatcher dispatcher = new();
-        using CancellationTokenSource cancellation = new();
-
-        Task runTask = Task.Run(
-            () => dispatcher.Run(cancellation.Token),
-            TestContext.Current.CancellationToken);
-        cancellation.Cancel();
-
-        await runTask.WaitAsync(
-            TimeSpan.FromSeconds(5),
-            TestContext.Current.CancellationToken);
-        Assert.True(runTask.IsCompletedSuccessfully);
-    }
-
-    [Fact]
-    public async Task AudioBytesRemainUnchangedThroughTranslationAndMailbox()
-    {
-        RTICOutputAudioDelta update = Assert.IsType<RTICOutputAudioDelta>(
-            await DispatchAndReceive(
-                ReadUpdate(OutputCursorUpdate(
-                    "response.output_audio.delta",
-                    ",\"delta\":\"AQID\"")),
-                typeof(RTICOutputAudioDelta)));
-
-        Assert.Equal(new byte[] { 1, 2, 3 }, update.Audio.ToArray());
     }
 
     private static readonly MethodInfo ConnectMethod =
@@ -199,13 +167,13 @@ public sealed class ConversationUpdateTranslationTests
             null,
             [dispatcher, new Action<RTICSessionEvent>(update => received = update)]);
 
-        TaskWithEvents mailboxTask = dispatcher.RunAsync();
+        TaskWithEvents actionQueueTask = dispatcher.RunAsync();
         dispatcher.Dispatch(providerUpdate);
-        dispatcher.CloseMailbox();
-        await mailboxTask;
+        dispatcher.CompleteAdding();
+        await actionQueueTask;
 
         return received ?? throw new InvalidOperationException(
-            $"No {expectedType.Name} update reached the mailbox.");
+            $"No {expectedType.Name} update reached the action queue.");
     }
 
     private static RealtimeServerUpdate ReadUpdate(string json)

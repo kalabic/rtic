@@ -1,9 +1,9 @@
-﻿namespace LibRTIC.MiniTaskLib.MessageQueue;
+namespace LibRTIC.MiniTaskLib.Queues;
 
 
-internal interface IEventMailbox : IDisposable
+internal interface IActionQueue : IActionQueueWriter, IDisposable
 {
-    void CloseMailbox();
+    void CompleteAdding();
 
     TaskWithEvents? GetAwaiter();
 

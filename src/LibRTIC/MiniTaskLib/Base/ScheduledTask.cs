@@ -1,43 +1,167 @@
-﻿using DotBase.Core;
-
 namespace LibRTIC.MiniTaskLib.Base;
 
-class ScheduledTask : DisposableBase
+internal sealed class ScheduledTask : FunctionTaskBase<Task>
 {
-    internal readonly Action _action;
+    private const TaskCreationOptions ScheduleCreationOptions =
+        TaskCreationOptions.DenyChildAttach |
+        TaskCreationOptions.HideScheduler |
+        TaskCreationOptions.RunContinuationsAsynchronously;
 
-    internal System.Timers.Timer _timer;
+    private readonly Action _action;
 
-    internal EventHandler? _taskComplete;
+    private readonly TimeSpan _interval;
 
-    public ScheduledTask(Action action, int timeoutMs, bool repeat)
+    private readonly bool _repeat;
+
+    private readonly TimeProvider _timeProvider;
+
+    private readonly CancellationTokenSource _cancellationSource;
+
+    private readonly object _cancellationLock = new();
+
+    private Task? _cancellationCompletion;
+
+    private int _resourcesDisposed;
+
+    internal Task Completion { get; }
+
+    internal bool IsCancellationRequested
+    {
+        get
+        {
+            lock (_cancellationLock)
+            {
+                return _cancellationSource.IsCancellationRequested;
+            }
+        }
+    }
+
+    internal Task CancellationCompletion
+    {
+        get
+        {
+            lock (_cancellationLock)
+            {
+                return _cancellationCompletion ?? Task.CompletedTask;
+            }
+        }
+    }
+
+    internal ScheduledTask(
+        Action action,
+        int timeoutMs,
+        bool repeat,
+        TimeProvider timeProvider)
+        : this(
+            action ?? throw new ArgumentNullException(nameof(action)),
+            ValidateInterval(timeoutMs),
+            repeat,
+            timeProvider ?? throw new ArgumentNullException(nameof(timeProvider)),
+            new CancellationTokenSource())
+    { }
+
+    private ScheduledTask(
+        Action action,
+        TimeSpan interval,
+        bool repeat,
+        TimeProvider timeProvider,
+        CancellationTokenSource cancellationSource)
+        : base(cancellationSource.Token, ScheduleCreationOptions)
     {
         _action = action;
-        _timer = new System.Timers.Timer() { Interval = timeoutMs };
-        _timer.AutoReset = repeat;
-        _timer.Elapsed += TimerElapsed;
+        _interval = interval;
+        _repeat = repeat;
+        _timeProvider = timeProvider;
+        _cancellationSource = cancellationSource;
+        Completion = this.Unwrap();
+    }
+
+    internal Task RequestCancellation()
+    {
+        lock (_cancellationLock)
+        {
+            if (_resourcesDisposed != 0)
+            {
+                return _cancellationCompletion ?? Task.CompletedTask;
+            }
+
+            _cancellationCompletion ??= _cancellationSource.CancelAsync();
+            return _cancellationCompletion;
+        }
+    }
+
+    internal void AbandonAfterStartFailure()
+    {
+        _ = DisposeAfterAbandonAsync(RequestCancellation());
+    }
+
+    protected override Task FunctionTask()
+    {
+        return _repeat ? RunPeriodicAsync() : RunOnceAsync();
     }
 
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
-            _timer.Elapsed -= TimerElapsed;
-            _timer.Dispose();
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
-            _timer = null;
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+            DisposeCancellationSource();
         }
 
         base.Dispose(disposing);
     }
 
-    private void TimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
+    private async Task RunOnceAsync()
     {
+        CancellationToken cancellation = _cancellationSource.Token;
+
+        await Task.Delay(_interval, _timeProvider, cancellation).ConfigureAwait(false);
+        cancellation.ThrowIfCancellationRequested();
         _action();
-        if (_taskComplete is not null)
+    }
+
+    private async Task RunPeriodicAsync()
+    {
+        CancellationToken cancellation = _cancellationSource.Token;
+        using PeriodicTimer timer = new(_interval, _timeProvider);
+
+        while (await timer.WaitForNextTickAsync(cancellation).ConfigureAwait(false))
         {
-            _taskComplete(this, EventArgs.Empty);
+            cancellation.ThrowIfCancellationRequested();
+            _action();
         }
+    }
+
+    private async Task DisposeAfterAbandonAsync(Task cancellationCompletion)
+    {
+        try
+        {
+            await cancellationCompletion.ConfigureAwait(false);
+        }
+        catch
+        {
+            // The start failure remains the primary exception.
+        }
+        finally
+        {
+            DisposeCancellationSource();
+        }
+    }
+
+    private void DisposeCancellationSource()
+    {
+        lock (_cancellationLock)
+        {
+            if (_resourcesDisposed == 0)
+            {
+                _resourcesDisposed = 1;
+                _cancellationSource.Dispose();
+            }
+        }
+    }
+
+    private static TimeSpan ValidateInterval(int timeoutMs)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(timeoutMs);
+        return TimeSpan.FromMilliseconds(timeoutMs);
     }
 }
