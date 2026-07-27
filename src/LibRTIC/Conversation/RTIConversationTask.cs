@@ -117,6 +117,25 @@ public class RTIConversationTask : RTIConversation
         return receiverQueueTask;
     }
 
+    public override Task StartResponseAsync(
+        string? instructions,
+        CancellationToken cancellationToken)
+        => _receiver.StartResponseAsync(instructions, cancellationToken);
+
+    public override Task InterruptResponseAsync(CancellationToken cancellationToken)
+        => _receiver.InterruptResponseAsync(cancellationToken);
+
+    public override Task TruncateOutputItemAsync(
+        string itemId,
+        int contentIndex,
+        TimeSpan audioEndTime,
+        CancellationToken cancellationToken)
+        => _receiver.TruncateOutputItemAsync(
+            itemId,
+            contentIndex,
+            audioEndTime,
+            cancellationToken);
+
     public override void Await()
     {
         var awaiter = _receiver.GetAwaiter();

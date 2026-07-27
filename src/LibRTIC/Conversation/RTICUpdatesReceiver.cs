@@ -26,4 +26,14 @@ internal interface RTICUpdatesReceiver : IEventMailbox, IDisposable
     void FinishReceiver();
 
     void SendInputAudio(IAudioStreamOutput stream, CancellationToken cancellation);
+
+    Task StartResponseAsync(string? instructions, CancellationToken cancellationToken);
+
+    Task InterruptResponseAsync(CancellationToken cancellationToken);
+
+    Task TruncateOutputItemAsync(
+        string itemId,
+        int contentIndex,
+        TimeSpan audioEndTime,
+        CancellationToken cancellationToken);
 }

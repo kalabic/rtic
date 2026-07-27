@@ -38,6 +38,18 @@ public abstract class RTIConversation : TaskListBase
 
     public abstract Task RunAsync();
 
+    public abstract Task StartResponseAsync(
+        string? instructions,
+        CancellationToken cancellationToken);
+
+    public abstract Task InterruptResponseAsync(CancellationToken cancellationToken);
+
+    public abstract Task TruncateOutputItemAsync(
+        string itemId,
+        int contentIndex,
+        TimeSpan audioEndTime,
+        CancellationToken cancellationToken);
+
     public abstract TaskWithEvents? GetAwaiter();
 
     public abstract void Cancel();
