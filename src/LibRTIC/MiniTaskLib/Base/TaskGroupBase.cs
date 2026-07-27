@@ -1,11 +1,8 @@
 using DotBase.Core;
-using LibRTIC.MiniTaskLib.Model;
 
 namespace LibRTIC.MiniTaskLib.Base;
 
-public abstract class TaskListBase 
-    : DisposableBase
-    , ITaskList
+public abstract class TaskGroupBase : DisposableBase
 {
     public abstract List<TaskWithEvents> GetTaskList();
 

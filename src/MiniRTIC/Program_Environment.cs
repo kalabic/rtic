@@ -1,4 +1,3 @@
-using LibRTIC.Config;
 using LibRTIC.Realtime;
 using System.Text;
 using LibRTIC_Win.BasicDevices;
@@ -6,7 +5,6 @@ using LibRTIC_Win.BasicDevices;
 namespace MiniRTIC;
 
 // 'game_music_loop_6' is a free sample from https://pixabay.com/sound-effects/game-music-loop-6-144641/
-// 'Hello there' is a free sample from https://pixabay.com/sound-effects/quothello-therequot-158832/
 
 public partial class Program
 {
@@ -32,11 +30,8 @@ public partial class Program
         // 'game_music_loop_6' sample is playing on speaker while session is being created.
         byte[] inactiveStateMusic = Properties.Resources.game_music_loop_6;
 
-        // 'Hello there' sample is enqueued into audio input stream when session starts.
-        byte[] helloBuffer = Properties.Resources.hello_there;
-
         AudioOutput = new WinConsoleAudio(Output.Info, RealtimeAudioContract.AudioFormat, exitSource.Token);
-        AudioOutput.Start(inactiveStateMusic, helloBuffer);
+        AudioOutput.Start(inactiveStateMusic);
         Output.AddStateEventHandler(AudioOutput.HandleEvent);
     }
 

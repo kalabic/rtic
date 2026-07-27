@@ -27,6 +27,8 @@ public partial class Program
     /// </summary>
     static private readonly CancellationTokenSource exitSource = new CancellationTokenSource();
 
+    static private RTICConversationControl? conversationControl = null;
+
 #if RUN_SYNC
     public static void Main(string[] args)
 #else
@@ -54,6 +56,7 @@ public partial class Program
 
         RTIConversation conversation = RTIConversationTask.Create(Output.Info, exit);
         conversation.ConfigureWith(config, AudioOutput.Microphone);
+        conversationControl = conversation.Control;
 
         //
         // A collection of events unrelated to conversation itself, but to 'Updates Receiver Task' and other utilities.
@@ -144,6 +147,8 @@ public partial class Program
     {
         // Notify console output that session has started.
         Output.Event.SessionStarted(" *\n * Session started\n * Press 'q' to quit.\n *");
+        _ = conversationControl?.RequestResponseAsync(
+            new RTICResponseRequest("Greet the caller briefly and ask how you can help."), CancellationToken.None);
     }
 
     /// <summary>

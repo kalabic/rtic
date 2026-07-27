@@ -6,8 +6,18 @@ using LibRTIC.MiniTaskLib.Base;
 
 namespace LibRTIC.Conversation;
 
-public abstract class RTIConversation : TaskListBase
+public abstract class RTIConversation : TaskGroupBase
 {
+    private protected RTIConversation()
+    {
+        Control = new RTICConversationControl(
+            RequestResponseCoreAsync,
+            InterruptOutputCoreAsync);
+    }
+
+    /// <summary>Provider-neutral commands for the running conversation.</summary>
+    public RTICConversationControl Control { get; }
+
     /// <summary>
     /// Events unrelated to conversation itself, but to network connection, tools, etc.
     /// <list type = "bullet">
@@ -38,16 +48,12 @@ public abstract class RTIConversation : TaskListBase
 
     public abstract Task RunAsync();
 
-    public abstract Task StartResponseAsync(
-        string? instructions,
+    private protected abstract Task RequestResponseCoreAsync(
+        RTICResponseRequest request,
         CancellationToken cancellationToken);
 
-    public abstract Task InterruptResponseAsync(CancellationToken cancellationToken);
-
-    public abstract Task TruncateOutputItemAsync(
-        string itemId,
-        int contentIndex,
-        TimeSpan audioEndTime,
+    private protected abstract Task InterruptOutputCoreAsync(
+        RTICOutputInterruption request,
         CancellationToken cancellationToken);
 
     public abstract TaskWithEvents? GetAwaiter();

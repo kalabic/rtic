@@ -14,7 +14,7 @@ using System.Net.WebSockets;
 namespace LibRTIC.Conversation;
 
 
-public class RTIConversationTask : RTIConversation
+public sealed class RTIConversationTask : RTIConversation
 {
     public static RTIConversation Create(InfoLog info, CancellationToken cancellation)
     {
@@ -28,20 +28,20 @@ public class RTIConversationTask : RTIConversation
     private const int INPUT_AUDIO_ACTION_PERIOD = 200;
 
     /// <summary>
-    /// All events from this _collection are (should be) forwarded to <see cref="ReceiverQueue"/>,
+    /// All events from this collection are forwarded to <see cref="UpdatesReceiverEvents"/>,
     /// but here made available for handling directly.
     /// </summary>
     public override EventProducerCollection ConversationEvents { get { return _conversationEvents; } }
 
     public override EventQueue UpdatesReceiverEvents { get { return _receiver.ReceiverEvents; } }
 
-    protected readonly InfoLog _info;
+    private readonly InfoLog _info;
 
     private TaskWithEvents? _sendAudioTask = null;
 
     private CancellationToken _cancellation;
 
-    protected ConversationCancellation _conversationCancellation;
+    private ConversationCancellation _conversationCancellation;
 
     private CancellationTokenSource? _audioCancellation = null;
 
@@ -57,7 +57,7 @@ public class RTIConversationTask : RTIConversation
 
     private int _cancelRequested = 0;
 
-    protected RTIConversationTask(InfoLog info, CancellationToken cancellation)
+    private RTIConversationTask(InfoLog info, CancellationToken cancellation)
     {
         _info = info;
         _conversationEvents = new EventProducerCollection("RTIConversationTask Events");
@@ -112,29 +112,20 @@ public class RTIConversationTask : RTIConversation
 
     public override Task RunAsync()
     {
-        var receiverQueueTask = _receiver.RunAsync();
-        receiverQueueTask.TaskEvents.Connect<TaskCompleted>( AssertAllTasksComplete );
-        return receiverQueueTask;
+        var receiverActionQueueTask = _receiver.RunAsync();
+        receiverActionQueueTask.TaskEvents.Connect<TaskCompleted>( AssertAllTasksComplete );
+        return receiverActionQueueTask;
     }
 
-    public override Task StartResponseAsync(
-        string? instructions,
+    private protected override Task RequestResponseCoreAsync(
+        RTICResponseRequest request,
         CancellationToken cancellationToken)
-        => _receiver.StartResponseAsync(instructions, cancellationToken);
+        => _receiver.RequestResponseAsync(request, cancellationToken);
 
-    public override Task InterruptResponseAsync(CancellationToken cancellationToken)
-        => _receiver.InterruptResponseAsync(cancellationToken);
-
-    public override Task TruncateOutputItemAsync(
-        string itemId,
-        int contentIndex,
-        TimeSpan audioEndTime,
+    private protected override Task InterruptOutputCoreAsync(
+        RTICOutputInterruption request,
         CancellationToken cancellationToken)
-        => _receiver.TruncateOutputItemAsync(
-            itemId,
-            contentIndex,
-            audioEndTime,
-            cancellationToken);
+        => _receiver.InterruptOutputAsync(request, cancellationToken);
 
     public override void Await()
     {
@@ -207,15 +198,15 @@ public class RTIConversationTask : RTIConversation
         {
             _info.Warning(
                 $"Conversation shutdown did not complete within {STOP_TASK_TIMEOUT} ms; " +
-                "closing its event mailbox.");
+                "completing its action queue.");
             _conversationCancellation.CancelWebSocket();
-            _receiver.CloseMailbox();
+            _receiver.CompleteAdding();
         }
     }
 
     /// <summary>
     /// List of all tasks started by this class, with the exception of the 'awaiter' task, 'awaiter' task exists when
-    /// <see cref="ConversationUpdatesReceiver"/> is running message queue in asynchronous mode and should not be 
+    /// <see cref="ConversationUpdatesReceiver"/> is running its action queue asynchronously and should not be
     /// included in this list.
     /// </summary>
     /// <returns></returns>
@@ -231,7 +222,7 @@ public class RTIConversationTask : RTIConversation
 
     /// <summary>
     /// When running in synchronous mode using method <see cref="Run"/>, this is invoked after return from
-    /// main message queue loop to assert all other tasks started by this class are finished.
+    /// main action queue loop to assert all other tasks started by this class are finished.
     /// </summary>
     private void AssertAllTasksComplete()
     {
@@ -240,7 +231,7 @@ public class RTIConversationTask : RTIConversation
 
     /// <summary>
     /// When running in asynchronous mode using method <see cref="RunAsync"/>, this is invoked after return
-    /// from main message queue loop to assert all other tasks started by this class are finished.
+    /// from main action queue loop to assert all other tasks started by this class are finished.
     /// </summary>
     private void AssertAllTasksComplete(object? sender, TaskCompleted update)
     {
@@ -332,7 +323,7 @@ public class RTIConversationTask : RTIConversation
         }
     }
 
-    protected void HandleSessionExceptions(Action sessionFunction)
+    private void HandleSessionExceptions(Action sessionFunction)
     {
         try
         {

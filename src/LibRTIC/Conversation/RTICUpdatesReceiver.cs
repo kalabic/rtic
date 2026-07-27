@@ -2,18 +2,18 @@
 using LibRTIC.Config;
 using LibRTIC.Conversation.UpdatesReceiver;
 using LibRTIC.MiniTaskLib;
-using LibRTIC.MiniTaskLib.MessageQueue;
+using LibRTIC.MiniTaskLib.Queues;
 
 namespace LibRTIC.Conversation;
 
-internal interface RTICUpdatesReceiver : IEventMailbox, IDisposable
+internal interface RTICUpdatesReceiver : IActionQueue
 {
     ConversationReceiverState ReceiverState { get; }
 
     bool IsWebSocketOpen { get; }
 
     /// <summary>
-    /// Expected to be invoked from its own message queue thread.
+    /// Expected to be invoked from its own action queue thread.
     /// </summary>
     EventQueue ReceiverEvents { get; }
 
@@ -27,13 +27,11 @@ internal interface RTICUpdatesReceiver : IEventMailbox, IDisposable
 
     void SendInputAudio(IAudioStreamOutput stream, CancellationToken cancellation);
 
-    Task StartResponseAsync(string? instructions, CancellationToken cancellationToken);
+    Task RequestResponseAsync(
+        RTICResponseRequest request,
+        CancellationToken cancellationToken);
 
-    Task InterruptResponseAsync(CancellationToken cancellationToken);
-
-    Task TruncateOutputItemAsync(
-        string itemId,
-        int contentIndex,
-        TimeSpan audioEndTime,
+    Task InterruptOutputAsync(
+        RTICOutputInterruption request,
         CancellationToken cancellationToken);
 }

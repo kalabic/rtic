@@ -3,23 +3,22 @@ using DotBase.Event;
 using DotBase.Log;
 using LibRTIC.MiniTaskLib.Base;
 using LibRTIC.MiniTaskLib.Events;
-using LibRTIC.MiniTaskLib.Model;
 using System.Threading.Channels;
 
-namespace LibRTIC.MiniTaskLib.MessageQueue;
+namespace LibRTIC.MiniTaskLib.Queues;
 
-public class EventMailbox : DisposableBase, IEventMailboxWriter, IEventMailbox
+public class ActionQueue : DisposableBase, IActionQueue
 {
     public bool IsComplete { get { return IsWriterComplete; } }
 
     public bool IsWriterComplete { get { return _writerComplete; } }
 
-    public EventQueue Events { get { return _forwardedEvents; } }
+    public EventQueue Events { get { return _dispatchedEvents; } }
 
 
-    protected EventQueue _forwardedEvents;
+    protected EventQueue _dispatchedEvents;
 
-    protected EventProducerCollection _events;
+    protected EventProducerCollection _sourceEvents;
 
     protected InfoLog _info;
 
@@ -27,7 +26,7 @@ public class EventMailbox : DisposableBase, IEventMailboxWriter, IEventMailbox
 
     private readonly object _writerLock = new object();
 
-    private readonly Channel<Action> _mailbox = Channel.CreateUnbounded<Action>(
+    private readonly Channel<Action> _queue = Channel.CreateUnbounded<Action>(
         new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
 
     private bool _writerComplete = false;
@@ -36,21 +35,28 @@ public class EventMailbox : DisposableBase, IEventMailboxWriter, IEventMailbox
 
     private TaskWithEvents? _queueTaskAwaiter = null;
 
-    private Scheduler _scheduler = new();
+    private readonly Scheduler _scheduler;
 
-    public EventMailbox(InfoLog info)
+    public ActionQueue(InfoLog info)
+        : this(info, TimeProvider.System)
+    { }
+
+    internal ActionQueue(InfoLog info, TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+
         _info = info;
-        _forwardedEvents = new("EventMailbox Forwarded Events", this);
-        _events = new("EventMailbox Events");
+        _dispatchedEvents = new("Action Queue Dispatched Events", this);
+        _sourceEvents = new("Action Queue Source Events");
+        _scheduler = new(timeProvider, NotifyExceptionOccurred);
 
         EnableInvokeFor<TaskExceptionOccured>();
-        EnableInvokeFor<EventMailboxStarted>();
-        EnableInvokeFor<EventMailboxFinished>();
+        EnableInvokeFor<ActionQueueStarted>();
+        EnableInvokeFor<ActionQueueDrained>();
 
-        ForwardEventTo<TaskExceptionOccured>(_forwardedEvents);
-        _forwardedEvents.EnableInvokeFor<EventMailboxStarted>();
-        _forwardedEvents.EnableInvokeFor<EventMailboxFinished>();
+        ForwardEventTo<TaskExceptionOccured>(_dispatchedEvents);
+        _dispatchedEvents.EnableInvokeFor<ActionQueueStarted>();
+        _dispatchedEvents.EnableInvokeFor<ActionQueueDrained>();
     }
 
     protected void SetLabel(string label)
@@ -64,10 +70,10 @@ public class EventMailbox : DisposableBase, IEventMailboxWriter, IEventMailbox
         if (disposing)
         {
             TryCompleteWriter();
-            _forwardedEvents.Dispose();
-            _events.Dispose();
-            _queueTaskAwaiter?.Dispose();
             _scheduler.Dispose();
+            _dispatchedEvents.Dispose();
+            _sourceEvents.Dispose();
+            _queueTaskAwaiter?.Dispose();
         }
 
         // Release unmanaged resources.
@@ -81,12 +87,12 @@ public class EventMailbox : DisposableBase, IEventMailboxWriter, IEventMailbox
 
     protected void EnableInvokeFor<TMessage>()
     {
-        _events.EnableInvokeFor<TMessage>();
+        _sourceEvents.EnableInvokeFor<TMessage>();
     }
 
     protected void ForwardEventTo<TMessage>(EventQueue forwarder)
     {
-        forwarder.ForwardFrom<TMessage>(_events);
+        forwarder.ForwardFrom<TMessage>(_sourceEvents);
     }
 
     protected void InvokeEvent<TMessage>(TMessage message)
@@ -95,9 +101,9 @@ public class EventMailbox : DisposableBase, IEventMailboxWriter, IEventMailbox
         {
             lock (_eventLock)
             {
-                if (!_events.IsComplete)
+                if (!_sourceEvents.IsComplete)
                 {
-                    _events.Invoke(message);
+                    _sourceEvents.Invoke(message);
                 }
             }
         }
@@ -105,7 +111,7 @@ public class EventMailbox : DisposableBase, IEventMailboxWriter, IEventMailbox
         {
             if (string.IsNullOrWhiteSpace(_label))
             {
-                _info.Warning("Exception while invoking mailbox event handlers.", ex);
+                _info.Warning("Exception while invoking action queue event handlers.", ex);
             }
             else
             {
@@ -118,7 +124,7 @@ public class EventMailbox : DisposableBase, IEventMailboxWriter, IEventMailbox
     {
         if (string.IsNullOrWhiteSpace(_label))
         {
-            _info.Error("Event mailbox failed.", ex);
+            _info.Error("Action queue failed.", ex);
         }
         else
         {
@@ -137,14 +143,14 @@ public class EventMailbox : DisposableBase, IEventMailboxWriter, IEventMailbox
         _scheduler.Execute(() => Post(action), delayMs, true);
     }
 
-    public void CloseMailbox()
+    public void CompleteAdding()
     {
-        PostFinal(NotifyMailboxFinished);
+        PostAndComplete(NotifyQueueDrained);
     }
 
     public virtual void Run()
     {
-        Post(NotifyMailboxStarted);
+        Post(NotifyQueueStarted);
         Run(CancellationToken.None);
     }
 
@@ -152,16 +158,16 @@ public class EventMailbox : DisposableBase, IEventMailboxWriter, IEventMailbox
     {
         while (WaitToRead(cancellation))
         {
-            while (_mailbox.Reader.TryRead(out Action? action))
+            while (_queue.Reader.TryRead(out Action? action))
             {
-                ProcessMailboxAction(action);
+                ExecuteAction(action);
             }
         }
     }
 
     public virtual TaskWithEvents RunAsync()
     {
-        Post(NotifyMailboxStarted);
+        Post(NotifyQueueStarted);
         return StartTaskFunctionAsync();
     }
 
@@ -175,9 +181,9 @@ public class EventMailbox : DisposableBase, IEventMailboxWriter, IEventMailbox
 
     private async Task TaskFunctionAsync()
     {
-        await foreach (var action in _mailbox.Reader.ReadAllAsync())
+        await foreach (var action in _queue.Reader.ReadAllAsync())
         {
-            ProcessMailboxAction(action);
+            ExecuteAction(action);
         }
     }
 
@@ -190,7 +196,7 @@ public class EventMailbox : DisposableBase, IEventMailboxWriter, IEventMailbox
 
         try
         {
-            return _mailbox.Reader.WaitToReadAsync(cancellation).AsTask().GetAwaiter().GetResult();
+            return _queue.Reader.WaitToReadAsync(cancellation).AsTask().GetAwaiter().GetResult();
         }
         catch (OperationCanceledException)
         {
@@ -198,7 +204,7 @@ public class EventMailbox : DisposableBase, IEventMailboxWriter, IEventMailbox
         }
     }
 
-    private void ProcessMailboxAction(Action action)
+    private void ExecuteAction(Action action)
     {
         try
         {
@@ -210,27 +216,27 @@ public class EventMailbox : DisposableBase, IEventMailboxWriter, IEventMailbox
         }
     }
 
-    private void NotifyMailboxStarted()
+    private void NotifyQueueStarted()
     {
-        _events.Invoke(new EventMailboxStarted());
-        _forwardedEvents.Invoke(new EventMailboxStarted());
+        _sourceEvents.Invoke(new ActionQueueStarted());
+        _dispatchedEvents.Invoke(new ActionQueueStarted());
     }
 
-    private void NotifyMailboxFinished()
+    private void NotifyQueueDrained()
     {
-        _events.Invoke(new EventMailboxFinished());
-        _forwardedEvents.Invoke(new EventMailboxFinished());
+        _sourceEvents.Invoke(new ActionQueueDrained());
+        _dispatchedEvents.Invoke(new ActionQueueDrained());
     }
 
     public bool Post(Action action)
     {
         lock (_writerLock)
         {
-            return !_writerComplete && _mailbox.Writer.TryWrite(action);
+            return !_writerComplete && _queue.Writer.TryWrite(action);
         }
     }
 
-    public bool PostFinal(Action action)
+    public bool PostAndComplete(Action action)
     {
         lock (_writerLock)
         {
@@ -239,8 +245,8 @@ public class EventMailbox : DisposableBase, IEventMailboxWriter, IEventMailbox
                 return false;
             }
 
-            bool result = _mailbox.Writer.TryWrite(action);
-            _writerComplete = _mailbox.Writer.TryComplete();
+            bool result = _queue.Writer.TryWrite(action);
+            _writerComplete = _queue.Writer.TryComplete();
             return result;
         }
     }
@@ -251,7 +257,7 @@ public class EventMailbox : DisposableBase, IEventMailboxWriter, IEventMailbox
         {
             if (!_writerComplete)
             {
-                _writerComplete = _mailbox.Writer.TryComplete();
+                _writerComplete = _queue.Writer.TryComplete();
             }
         }
         return _writerComplete;

@@ -2,7 +2,7 @@ using System.Net.WebSockets;
 using DotBase.Log;
 using LibRTIC.Conversation.OpenAI;
 using LibRTIC.Conversation.UpdatesReceiver;
-using LibRTIC.MiniTaskLib.MessageQueue;
+using LibRTIC.MiniTaskLib.Queues;
 using OpenAI.Realtime;
 
 namespace LibRTIC.Conversation.OpenAI.Realtime;
@@ -10,10 +10,10 @@ namespace LibRTIC.Conversation.OpenAI.Realtime;
 #pragma warning disable OPENAI002
 
 /// <summary>
-/// Translates provider updates and starts a mailbox so application handlers do
+/// Translates provider updates and starts an action queue so application handlers do
 /// not run on the network receiver task.
 /// </summary>
-internal abstract class ConversationUpdatesDispatcher : EventMailbox
+internal abstract class ConversationUpdatesDispatcher : ActionQueue
 {
     internal static IReadOnlySet<Type> SupportedUpdateTypes =>
         OpenAISessionEventTranslator.SupportedUpdateTypes;
@@ -30,9 +30,9 @@ internal abstract class ConversationUpdatesDispatcher : EventMailbox
         : base(info)
     {
         _translator = new();
-        _converter = new(_events, _forwardedEvents);
+        _converter = new(_sourceEvents, _dispatchedEvents);
 
-        ForwardEventTo<ConversationSessionFinished>(_forwardedEvents);
+        ForwardEventTo<ConversationSessionFinished>(_dispatchedEvents);
     }
 
     protected override void Dispose(bool disposing)
@@ -99,8 +99,14 @@ internal abstract class ConversationUpdatesDispatcher : EventMailbox
     {
         RTICSessionEvent update = _translator.Translate(providerUpdate);
         UpdateSessionState(update);
+        ObserveSessionEvent(update);
         _converter.Forward(update);
     }
+
+    /// <summary>
+    /// Observes translated state before application handlers can react to the event.
+    /// </summary>
+    protected virtual void ObserveSessionEvent(RTICSessionEvent update) { }
 
     private void UpdateSessionState(RTICSessionEvent update)
     {

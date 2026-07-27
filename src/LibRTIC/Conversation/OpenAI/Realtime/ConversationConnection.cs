@@ -5,6 +5,7 @@ using LibRTIC.Config;
 using LibRTIC.Conversation.UpdatesReceiver;
 using LibRTIC.MiniTaskLib;
 using LibRTIC.MiniTaskLib.Events;
+using LibRTIC.MiniTaskLib.Queues;
 using LibRTIC.Realtime;
 using OpenAI.Realtime;
 using System.Net.WebSockets;
@@ -44,20 +45,20 @@ internal class ConversationConnection : ConversationUpdatesReceiver
     {
         _conversationEvents = conversationEvents;
 
-        var receiverQueue = ReceiverEvents;
+        var receiverEvents = ReceiverEvents;
 
-        // Forward events invoked from whichever task to be handled using 'receiverQueue' task.
-        receiverQueue.ForwardFrom<ClientStartedConnecting>(conversationEvents);
-        receiverQueue.ForwardFrom<InputAudioTaskFinished>(conversationEvents);
-        receiverQueue.ForwardFrom<FailedToConnectMsg>(conversationEvents);
-        receiverQueue.ForwardFrom<FailedToOperateMsg>(conversationEvents);
-        receiverQueue.ForwardFrom<TaskExceptionOccured>(conversationEvents);
+        // Forward events invoked from any task to handlers dispatched through the action queue.
+        receiverEvents.ForwardFrom<ClientStartedConnecting>(conversationEvents);
+        receiverEvents.ForwardFrom<InputAudioTaskFinished>(conversationEvents);
+        receiverEvents.ForwardFrom<FailedToConnectMsg>(conversationEvents);
+        receiverEvents.ForwardFrom<FailedToOperateMsg>(conversationEvents);
+        receiverEvents.ForwardFrom<TaskExceptionOccured>(conversationEvents);
 
         // Connect event handlers.
-        receiverQueue.Connect<InputAudioTaskFinished>(HandleEvent);
-        receiverQueue.Connect<FailedToConnectMsg>(HandleEvent);
-        receiverQueue.Connect<FailedToOperateMsg>(HandleEvent);
-        receiverQueue.Connect<EventMailboxStarted>(HandleEvent);
+        receiverEvents.Connect<InputAudioTaskFinished>(HandleEvent);
+        receiverEvents.Connect<FailedToConnectMsg>(HandleEvent);
+        receiverEvents.Connect<FailedToOperateMsg>(HandleEvent);
+        receiverEvents.Connect<ActionQueueStarted>(HandleEvent);
     }
 
     protected override void Dispose(bool disposing)
@@ -80,7 +81,7 @@ internal class ConversationConnection : ConversationUpdatesReceiver
 
     /// <summary>
     /// List of all tasks started by this class, with the exception of the 'awaiter' task, 'awaiter' task exists when
-    /// <see cref="ConversationUpdatesReceiver"/> is running message queue in asynchronous mode and should not be 
+    /// <see cref="ConversationUpdatesReceiver"/> is running its action queue asynchronously and should not be
     /// included in this list.
     /// </summary>
     /// <returns></returns>
@@ -97,15 +98,15 @@ internal class ConversationConnection : ConversationUpdatesReceiver
     private void HandleEvent(object? sender, TaskCompleted update)
     {
         // The receiver task is the authoritative lifetime of the network session.
-        // Do not depend on the microphone task to close the mailbox: cancellation
+        // Do not depend on the microphone task to complete the action queue: cancellation
         // must still complete if audio code is stuck or broken.
-        CloseMailbox();
+        CompleteAdding();
     }
 
     /// <summary>
-    /// Entry for <see cref="EventMailboxStarted"/> event notification.
+    /// Entry for <see cref="ActionQueueStarted"/> event notification.
     /// </summary>
-    private void HandleEvent(object? sender, EventMailboxStarted update)
+    private void HandleEvent(object? sender, ActionQueueStarted update)
     {
         StartNetworkConnectionTask();
     }
@@ -117,7 +118,7 @@ internal class ConversationConnection : ConversationUpdatesReceiver
     {
         FinishReceiver(); // This should start graceful shutdown.
         InternalCancelStopDisposeAll();
-        CloseMailbox(); // The end.
+        CompleteAdding(); // The end.
     }
 
     /// <summary>
@@ -126,7 +127,7 @@ internal class ConversationConnection : ConversationUpdatesReceiver
     private void HandleEvent(object? sender, FailedToConnectMsg update)
     {
         InternalCancelStopDisposeAll();
-        CloseMailbox(); // The end.
+        CompleteAdding(); // The end.
     }
 
     /// <summary>
@@ -189,7 +190,7 @@ internal class ConversationConnection : ConversationUpdatesReceiver
     }
 
     /// <summary>
-    /// Runs independently from the receiver mailbox and network task. Opening a
+    /// Runs independently from the receiver action queue and network task. Opening a
     /// WebSocket is not sufficient: the session and its required microphone pipeline
     /// must both become operational before the startup deadline.
     /// </summary>
@@ -225,7 +226,7 @@ internal class ConversationConnection : ConversationUpdatesReceiver
 
     /// <summary>
     /// Entry for a task that establishes network connection with the server and receives conversation updates.
-    /// <para>Conversation updates are enqued into main message queue and application shoould read them using it.</para>
+    /// <para>Conversation updates are enqueued into the main action queue for application handlers.</para>
     /// </summary>
     /// <param name="networkTaskCancellation"></param>
     /// <exception cref="InvalidOperationException"></exception>
