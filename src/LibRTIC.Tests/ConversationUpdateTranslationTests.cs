@@ -50,7 +50,7 @@ public sealed class ConversationUpdateTranslationTests
         { typeof(RTICMcpCallCompleted), """{"type":"response.mcp_call.completed","event_id":"event_1","item_id":"item_1","output_index":3}""" },
         { typeof(RTICMcpCallFailed), """{"type":"response.mcp_call.failed","event_id":"event_1","item_id":"item_1","output_index":3}""" },
         { typeof(RTICMcpCallStarted), """{"type":"response.mcp_call.in_progress","event_id":"event_1","item_id":"item_1","output_index":3}""" },
-        { typeof(RTICOutputAudioDelta), OutputCursorUpdate("response.output_audio.delta", ",\"delta\":\"AQID\"") },
+        { typeof(RTICOutputAudioDelta), OutputCursorUpdate("response.output_audio.delta", ",\"delta\":\"AQIDBA==\"") },
         { typeof(RTICOutputAudioCompleted), OutputCursorUpdate("response.output_audio.done") },
         { typeof(RTICOutputTranscriptDelta), OutputCursorUpdate("response.output_audio_transcript.delta", ",\"delta\":\"hel\"") },
         { typeof(RTICOutputTranscriptCompleted), OutputCursorUpdate("response.output_audio_transcript.done", ",\"transcript\":\"hello\"") },

@@ -1,6 +1,7 @@
 using AudioFormatLib;
 using AudioFormatLib.Buffers;
 using AudioFormatLib.IO;
+using AudioFormatLib.IO.S16;
 using DotBase.Event;
 using DotBase.Log;
 using LibRTIC.Config;
@@ -23,7 +24,7 @@ public sealed class RTIConversationTask : RTIConversation
 
     private const int STOP_TASK_TIMEOUT = 10000;
 
-    private const int AUDIO_INPUT_FRAME_CAPACITY = 8_192;
+    private const int AUDIO_INPUT_SAMPLE_CAPACITY = 8_192;
 
     private const int INPUT_AUDIO_ACTION_PERIOD = 200;
 
@@ -45,11 +46,13 @@ public sealed class RTIConversationTask : RTIConversation
 
     private CancellationTokenSource? _audioCancellation = null;
 
-    private IPcm16FrameOutput? _audioOutputFrames = null;
+    private IS16SampleOutput? _audioOutputSamples = null;
 
     private AudioStreamBuffer? _internalAudioBuffer = null;
 
-    private IPcm16FrameInput? _internalAudioInput = null;
+    private IS16SampleInput? _internalAudioInput = null;
+
+    private AudioPacket _inputAudioPacket;
 
     private RTICUpdatesReceiver _receiver;
 
@@ -67,20 +70,20 @@ public sealed class RTIConversationTask : RTIConversation
         UpdatesReceiverEvents.Connect<RTICSessionConfigured>(StartAudioInputTask);
     }
 
-    public override void ConfigureWith(RTICConfig options, IPcm16FrameOutput audioOutputFrames)
+    public override void ConfigureWith(RTICConfig options, IAudioOutputs audioOutputSamples)
     {
         ArgumentNullException.ThrowIfNull(options);
-        ArgumentNullException.ThrowIfNull(audioOutputFrames);
-        if (audioOutputFrames.Format.SampleRate != RealtimeAudioContract.SamplesPerSecond ||
-            audioOutputFrames.Format.ChannelCount != RealtimeAudioContract.ChannelCount)
+        ArgumentNullException.ThrowIfNull(audioOutputSamples);
+        if (audioOutputSamples.Format.SampleRate != RealtimeAudioContract.SamplesPerSecond ||
+            audioOutputSamples.Format.ChannelCount != RealtimeAudioContract.ChannelCount)
         {
             throw new ArgumentException(
-                "Realtime microphone audio must be mono PCM16 at " +
-                $"{RealtimeAudioContract.SamplesPerSecond} frames per second.",
-                nameof(audioOutputFrames));
+                "Realtime microphone audio must be mono S16 at " +
+                $"{RealtimeAudioContract.SamplesPerSecond} samples per second.",
+                nameof(audioOutputSamples));
         }
 
-        _audioOutputFrames = audioOutputFrames;
+        _audioOutputSamples = audioOutputSamples.S16Samples;
         _receiver.ConfigureWith(options);
     }
 
@@ -88,8 +91,9 @@ public sealed class RTIConversationTask : RTIConversation
     {
         if (disposing)
         {
-            _audioOutputFrames = null;
+            _audioOutputSamples = null;
             _internalAudioInput = null;
+            _inputAudioPacket = default;
             _internalAudioBuffer?.Dispose();
             _internalAudioBuffer = null;
             _receiver.Dispose();
@@ -264,9 +268,12 @@ public sealed class RTIConversationTask : RTIConversation
         format.BufferSize = (int)format.Format.BufferSizeFromSeconds(RealtimeAudioContract.InputBufferSeconds);
         format.WaitForCompleteRead = true;
         _internalAudioBuffer = new AudioStreamBuffer(format, _audioCancellation.Token);
-        _internalAudioInput = _internalAudioBuffer.Input.Pcm16Frames
+        _internalAudioInput = _internalAudioBuffer.Input.S16Samples
             ?? throw new InvalidOperationException(
-                "The internal Realtime audio buffer is not PCM16-compatible.");
+                "The internal Realtime audio buffer is not S16-compatible.");
+        _inputAudioPacket = new AudioPacket(
+            RealtimeAudioContract.AudioFormat,
+            AUDIO_INPUT_SAMPLE_CAPACITY);
         //
         // A task that reads input audio from intermediate buffer and sends it to the server.
         //
@@ -299,25 +306,24 @@ public sealed class RTIConversationTask : RTIConversation
     /// </summary>
     private void InputAudioAction()
     {
-        if (_internalAudioInput is not null && _audioOutputFrames is not null &&
+        if (_internalAudioInput is not null && _audioOutputSamples is not null &&
             _audioCancellation is not null && !_audioCancellation.IsCancellationRequested)
         {
-            int framesRead = -1;
-            short[] buffer = new short[AUDIO_INPUT_FRAME_CAPACITY];
-
+            int samplesRead = -1;
             // Drain all currently available caller audio in bounded transfers.
             while (!_audioCancellation.IsCancellationRequested && 
-                   _internalAudioInput.FreeCapacity >= AUDIO_INPUT_FRAME_CAPACITY &&
-                   framesRead != 0)
+                   _internalAudioInput.FreeCapacity >= AUDIO_INPUT_SAMPLE_CAPACITY &&
+                   samplesRead != 0)
             {
-                framesRead = _audioOutputFrames.Read(
-                    buffer,
-                    0,
-                    AUDIO_INPUT_FRAME_CAPACITY);
-                if (framesRead > 0 && !_internalAudioInput.TryWrite(buffer, 0, framesRead))
+                samplesRead = _audioOutputSamples.Read(
+                    ref _inputAudioPacket,
+                    AUDIO_INPUT_SAMPLE_CAPACITY);
+                if (samplesRead > 0)
                 {
-                    throw new InvalidOperationException(
-                        "The internal Realtime audio buffer could not accept caller audio frames.");
+                    if (!_internalAudioInput.TryWrite(in _inputAudioPacket, samplesRead))
+                    {
+                        _info.Warning("The internal Realtime audio buffer could not accept caller audio samples.");
+                    }
                 }
             }
         }

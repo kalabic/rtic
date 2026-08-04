@@ -1,6 +1,7 @@
 using DotBase.Log;
 using LibRTIC.Conversation;
 using LibRTIC.Conversation.Control;
+using LibRTIC.Realtime;
 using System.Collections.Concurrent;
 using System.Diagnostics.Tracing;
 using Xunit;
@@ -224,7 +225,7 @@ public sealed class ConversationCommandDispatcherTests
                 cursor.ItemId,
                 cursor.OutputIndex,
                 cursor.ContentIndex,
-                new byte[] { 0, 0 }));
+                RealtimeAudioContract.CreatePacket([0, 0])));
         return cursor;
     }
 

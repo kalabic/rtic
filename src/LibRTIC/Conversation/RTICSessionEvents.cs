@@ -1,3 +1,6 @@
+using AudioFormatLib;
+using LibRTIC.Realtime;
+
 namespace LibRTIC.Conversation;
 
 public interface IRTICResponseEvent
@@ -214,14 +217,15 @@ public sealed record RTICOutputAudioDelta : RTICSessionEvent, IRTICContentEvent
         string itemId,
         int outputIndex,
         int contentIndex,
-        ReadOnlyMemory<byte> audio)
+        AudioPacket audio)
         : base(RTICEventId.OutputAudioDelta)
     {
+        RealtimeAudioContract.ValidatePacket(in audio, nameof(audio));
         ResponseId = responseId;
         ItemId = itemId;
         OutputIndex = outputIndex;
         ContentIndex = contentIndex;
-        Audio = RTICImmutable.Copy(audio);
+        Audio = audio;
     }
 
     public string ResponseId { get; }
@@ -232,7 +236,10 @@ public sealed record RTICOutputAudioDelta : RTICSessionEvent, IRTICContentEvent
 
     public int ContentIndex { get; }
 
-    public ReadOnlyMemory<byte> Audio { get; }
+    /// <summary>
+    /// Mutable packet storage owned by this event and shared by shallow packet copies.
+    /// </summary>
+    public AudioPacket Audio { get; }
 }
 
 public sealed record RTICOutputAudioCompleted(

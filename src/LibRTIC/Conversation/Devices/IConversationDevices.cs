@@ -1,4 +1,5 @@
-﻿using AudioFormatLib.IO;
+using AudioFormatLib;
+using AudioFormatLib.IO;
 using DotBase.Event;
 using LibRTIC.Conversation.Shell;
 
@@ -9,7 +10,7 @@ namespace LibRTIC.Conversation.Devices;
 /// Implementations:
 /// <list type="bullet">
 /// <item><b>Local</b> (single-session): owns hardware capture/playback and optional
-/// <see cref="SessionAudioOutputTask"/> — see LibRTIC_Win <c>LocalConversationDevices</c>.</item>
+/// a hardware playback monitor — see LibRTIC_Win <c>LocalConversationDevices</c>.</item>
 /// <item><b>Proxy</b> (multi-session): uses host virtual mic/spk streams; no hardware ownership —
 /// see <see cref="ConversationDevicesProxy"/>.</item>
 /// </list>
@@ -18,8 +19,8 @@ public interface IConversationDevices : IDisposable
 {
     public void ConnectingStarted();
 
-    /// <summary>Gets the mono PCM16 microphone frames supplied to the Realtime session.</summary>
-    public IPcm16FrameOutput GetAudioOutput();
+    /// <summary>Gets the mono S16 microphone samples supplied to the Realtime session.</summary>
+    public IAudioOutputs GetAudioOutput();
 
     public void ConnectReceiverEvents(EventProducerCollection receiverEvents);
 
@@ -38,7 +39,7 @@ public interface IConversationDevices : IDisposable
 
     public long CancelStopDisposeAll();
 
-    public void EnqueueForPlayback(ItemAttributes item, ReadOnlyMemory<byte> audioData);
+    public void EnqueueForPlayback(ItemAttributes item, in AudioPacket audio);
 }
 
 

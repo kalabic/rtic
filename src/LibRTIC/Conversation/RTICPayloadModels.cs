@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using AudioFormatLib;
+using LibRTIC.Realtime;
 
 namespace LibRTIC.Conversation;
 
@@ -222,18 +224,24 @@ public sealed record RTICTextContentPart(string? Text, bool IsInput) : RTICConte
 public sealed record RTICAudioContentPart : RTICContentPart
 {
     public RTICAudioContentPart(
-        ReadOnlyMemory<byte>? audio,
+        AudioPacket? audio,
         string? transcript,
         bool isInput)
     {
-        Audio = audio.HasValue
-            ? new ReadOnlyMemory<byte>(audio.Value.ToArray())
-            : (ReadOnlyMemory<byte>?)null;
+        if (audio is AudioPacket packet)
+        {
+            RealtimeAudioContract.ValidatePacket(in packet, nameof(audio));
+        }
+
+        Audio = audio;
         Transcript = transcript;
         IsInput = isInput;
     }
 
-    public ReadOnlyMemory<byte>? Audio { get; }
+    /// <summary>
+    /// Optional mutable packet storage shared by shallow packet copies.
+    /// </summary>
+    public AudioPacket? Audio { get; }
 
     public string? Transcript { get; }
 

@@ -1,4 +1,4 @@
-using LibRTIC.MiniTaskLib;
+using DotBase.Cancellation;
 
 namespace LibRTIC.Conversation.UpdatesReceiver;
 
