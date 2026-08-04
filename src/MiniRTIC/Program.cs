@@ -4,6 +4,7 @@
 
 //#define RUN_SYNC
 
+using AudioFormatLib;
 using LibRTIC.Config;
 using LibRTIC.Conversation;
 using LibRTIC.BasicDevices.RTIC;
@@ -234,8 +235,8 @@ public partial class Program
     /// <param name="update"></param>
     private static void HandleEvent(object? s, RTICOutputAudioDelta update)
     {
-        var data = update.Audio.ToArray();
-        AudioOutput?.Speaker?.Write(data, 0, data.Length);
+        AudioPacket audio = update.Audio;
+        AudioOutput?.Speaker?.S16Samples?.TryWrite(in audio);
     }
 
     /// <summary>

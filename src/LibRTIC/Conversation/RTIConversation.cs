@@ -1,4 +1,5 @@
 using AudioFormatLib.IO;
+using AudioFormatLib.IO.S16;
 using DotBase.Event;
 using LibRTIC.Config;
 using LibRTIC.MiniTaskLib;
@@ -41,8 +42,8 @@ public abstract class RTIConversation : TaskGroupBase
     /// </summary>
     public abstract EventQueue UpdatesReceiverEvents { get; }
 
-    /// <summary>Configures the session and its mono PCM16 microphone-frame source.</summary>
-    public abstract void ConfigureWith(RTICConfig options, IPcm16FrameOutput audioOutputFrames);
+    /// <summary>Configures the session and its mono S16 microphone-sample source.</summary>
+    public abstract void ConfigureWith(RTICConfig options, IAudioOutputs audioOutputSamples);
 
     public abstract void Run();
 

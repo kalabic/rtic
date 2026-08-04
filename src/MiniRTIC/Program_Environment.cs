@@ -1,3 +1,4 @@
+using AudioFormatLib;
 using LibRTIC.Realtime;
 using System.Text;
 using LibRTIC_Win.BasicDevices;
@@ -28,7 +29,8 @@ public partial class Program
         Console.CancelKeyPress += sessionCanceler;
 
         // 'game_music_loop_6' sample is playing on speaker while session is being created.
-        byte[] inactiveStateMusic = Properties.Resources.game_music_loop_6;
+        AudioPacket inactiveStateMusic = RealtimeAudioContract.CreatePacket(
+            Properties.Resources.game_music_loop_6);
 
         AudioOutput = new WinConsoleAudio(Output.Info, RealtimeAudioContract.AudioFormat, exitSource.Token);
         AudioOutput.Start(inactiveStateMusic);

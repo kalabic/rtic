@@ -1,9 +1,12 @@
 using AudioFormatLib;
 using AudioFormatLib.IO;
+using AudioFormatLib.IO.S16;
 using DotBase.Core;
 using LibRTIC.BasicDevices.RTIC;
 using LibRTIC.Conversation;
+using LibRTIC.Conversation.Devices;
 using DotBase.Log;
+using LibRTIC.Realtime;
 using Timer = System.Timers.Timer;
 
 namespace LibRTIC.BasicDevices;
@@ -12,8 +15,8 @@ namespace LibRTIC.BasicDevices;
 /// Logic for enqueueing waiting music and sending 'hello sample' before conversation starts is here.
 /// <para>An abstract base class that expects from derived classes:
 /// <list type = "bullet">
-///   <item>Access to the speaker's raw audio input by implementing <see cref="RTIConsoleAudio.Speaker"/></item>
-///   <item>Access to complete microphone PCM16 frames by implementing <see cref="RTIConsoleAudio.Microphone"/></item>
+///   <item>Access to the speaker's S16 sample input by implementing <see cref="RTIConsoleAudio.Speaker"/></item>
+///   <item>Access to complete microphone S16 samples by implementing <see cref="RTIConsoleAudio.Microphone"/></item>
 ///   <item>Adjust speaker volume according to value given to <see cref="RTIConsoleAudio.Volume"/></item>
 ///   <item>If any custom initialization is needed right before streaming is started, then override member <see cref="RTIConsoleAudio.Start"/>.</item>
 /// </list></para>
@@ -30,22 +33,19 @@ public abstract class RTIConsoleAudio : DisposableBase
 {
     private const int INPUT_AUDIO_WAIT_PERIOD = 500;
 
-    public abstract IAudioBufferInput? Speaker { get; }
+    public abstract IAudioInputs? Speaker { get; }
 
-    /// <summary> Enable SIP server to forward responses to SIP client. </summary>
-    public virtual IAudioBufferOutput? SpeakerOutput { get { return null; } }
-
-    /// <summary>Captured microphone PCM16 frames, or <c>null</c> before initialization.</summary>
-    public abstract IPcm16FrameOutput? Microphone { get; }
+    /// <summary>Captured microphone S16 samples, or <c>null</c> before initialization.</summary>
+    public abstract IAudioOutputs? Microphone { get; }
 
     /// <summary> Enable sending recorded speech or silence. Enable SIP server to forward user speech from SIP client. </summary>
-    public virtual IAudioBufferInput? MicrophoneInput { get { return null; } }
+    public virtual IAudioInputs? MicrophoneInput { get { return null; } }
 
     public virtual float Volume { get; set; }
 
     protected InfoLog _info;
 
-    protected APcmFormat _audioFormat;
+    protected ASampleFormat _audioFormat;
 
     protected CancellationToken _cancellation;
 
@@ -53,21 +53,25 @@ public abstract class RTIConsoleAudio : DisposableBase
 
     protected Timer? _timer = null;
 
-    protected byte[]? _helloSample = null;
+    protected AudioPacket? _helloSample = null;
 
-    private byte[] _silenceBuffer;
+    private readonly AudioPacket _silencePacket;
 
     private float _normalVolume = 0.0f;
 
     public RTIConsoleAudio(InfoLog info,
-                           APcmFormat audioFormat,
+                           ASampleFormat audioFormat,
                            CancellationToken cancellation)
     {
         this._info = info;
         this._audioFormat = audioFormat;
         this._cancellation = cancellation;
 
-        _silenceBuffer = new byte[audioFormat.BufferSizeFromMiliseconds(100)];
+        int silenceSamples = checked((int)(audioFormat.SampleRate * 100L / 1000L));
+        _silencePacket = new AudioPacket(
+            audioFormat,
+            silenceSamples,
+            silenceSamples);
     }
 
     protected override void Dispose(bool disposing)
@@ -85,17 +89,28 @@ public abstract class RTIConsoleAudio : DisposableBase
         base.Dispose(disposing);
     }
 
-    public virtual void Start(byte[]? waitingMusic = null, byte[]? helloSample = null)
+    public virtual void Start(
+        AudioPacket? waitingMusic = null,
+        AudioPacket? helloSample = null)
     {
         _state = RTIConsoleStateId.Inactive;
 
-        if (waitingMusic is not null && Speaker is not null)
+        if (waitingMusic is AudioPacket music)
         {
-            Speaker.Write(waitingMusic, 0, waitingMusic.Length);
+            RealtimeAudioContract.ValidatePacket(
+                in music,
+                nameof(waitingMusic));
+            if (Speaker is IAudioInputs speaker)
+            {
+                speaker.S16Samples?.TryWrite(in music);
+            }
         }
-        if (helloSample is not null)
+        if (helloSample is AudioPacket hello)
         {
-            _helloSample = helloSample;
+            RealtimeAudioContract.ValidatePacket(
+                in hello,
+                nameof(helloSample));
+            _helloSample = hello;
         }
     }
 
@@ -107,10 +122,11 @@ public abstract class RTIConsoleAudio : DisposableBase
     public virtual void HandleEvent(object? sender, RTIConsoleStateId state)
     {
         _state = state;
-        if (_state == RTIConsoleStateId.Answering && _helloSample is not null)
+        if (_state == RTIConsoleStateId.Answering &&
+            _helloSample is AudioPacket helloSample)
         {
-            MicrophoneInput?.ClearBuffer();
-            MicrophoneInput?.Write(_helloSample, 0, _helloSample.Length);
+            MicrophoneInput?.Buffer.ClearBuffer();
+            MicrophoneInput?.S16Samples?.TryWrite(in helloSample);
             _helloSample = null;
 
             _timer = new();
@@ -155,7 +171,7 @@ public abstract class RTIConsoleAudio : DisposableBase
     /// <param name="update"></param>
     public void HandleEvent(object? s, RTICResponseStarted update)
     {
-        Speaker?.ClearBuffer();
+        ClearSpeaker();
     }
 
     /// <summary>
@@ -165,9 +181,15 @@ public abstract class RTIConsoleAudio : DisposableBase
     /// <param name="e"></param>
     protected void OnTimer(Object? source, System.Timers.ElapsedEventArgs e)
     {
-        if (_state == RTIConsoleStateId.Answering && _silenceBuffer is not null)
+        if (_state == RTIConsoleStateId.Answering)
         {
-            MicrophoneInput?.Write(_silenceBuffer, 0, _silenceBuffer.Length);
+            MicrophoneInput?.S16Samples?.TryWrite(in _silencePacket);
         }
+    }
+
+    /// <summary>Clears queued speaker audio using the device-specific policy.</summary>
+    protected virtual void ClearSpeaker()
+    {
+        Speaker?.Buffer.ClearBuffer();
     }
 }

@@ -1,17 +1,19 @@
 using AudioFormatLib;
 using AudioFormatLib.IO;
+using AudioFormatLib.IO.S16;
 using LibRTIC.BasicDevices;
+using LibRTIC.Conversation.Devices;
 using DotBase.Log;
 
 namespace LibRTIC_Win.BasicDevices;
 
 public class WinConsoleAudio : RTIConsoleAudio
 {
-    public override IAudioBufferInput? Speaker { get { return _speaker?.Input.Buffer; } }
+    public override IAudioInputs? Speaker { get { return _speaker?.Input; } }
 
-    public override IPcm16FrameOutput? Microphone { get { return _microphone?.Output.Pcm16Frames; } }
+    public override IAudioOutputs? Microphone { get { return _microphone?.Output; } }
 
-    public override IAudioBufferInput? MicrophoneInput { get { return _microphone?.Input.Buffer; } }
+    public override IAudioInputs? MicrophoneInput { get { return _microphone?.Input; } }
 
     public override float Volume
     {
@@ -30,7 +32,7 @@ public class WinConsoleAudio : RTIConsoleAudio
 
     private MicrophoneAudioStream? _microphone = null;
 
-    public WinConsoleAudio(InfoLog info, APcmFormat audioFormat, CancellationToken cancellation)
+    public WinConsoleAudio(InfoLog info, ASampleFormat audioFormat, CancellationToken cancellation)
         : base(info, audioFormat, cancellation)
     {
     }
@@ -48,14 +50,17 @@ public class WinConsoleAudio : RTIConsoleAudio
         base.Dispose(disposing);
     }
 
-    public override void Start(byte[]? waitingMusic = null, byte[]? helloSample = null)
+    public override void Start(
+        AudioPacket? waitingMusic = null,
+        AudioPacket? helloSample = null)
     {
         ABufferParams spkParams = new(_audioFormat);
         spkParams.BufferSize = (int)_audioFormat.BufferSizeFromSeconds(SpeakerAudioStream.BUFFER_SECONDS);
         _speaker = new SpeakerAudioStream(spkParams, _cancellation);
 
         ABufferParams micParams = new(_audioFormat);
-        micParams.BufferSize = (int)_audioFormat.BufferSizeFromSeconds(5);
+        micParams.BufferSize = (int)_audioFormat.BufferSizeFromSeconds(
+            MicrophoneAudioStream.BUFFER_SECONDS);
         _microphone = MicrophoneAudioStream.Create(micParams, _cancellation);
 
         base.Start(waitingMusic, helloSample);

@@ -45,9 +45,9 @@ public sealed class OpenAISessionEventTranslatorTests
         OpenAISessionEventTranslator translator = new();
         RTICOutputAudioDelta update = Assert.IsType<RTICOutputAudioDelta>(
             translator.Translate(ReadUpdate(
-                """{"type":"response.output_audio.delta","event_id":"event_1","response_id":"response_1","item_id":"item_1","output_index":3,"content_index":2,"delta":"AQID"}""")));
+                """{"type":"response.output_audio.delta","event_id":"event_1","response_id":"response_1","item_id":"item_1","output_index":3,"content_index":2,"delta":"AQIDBA=="}""")));
 
-        Assert.Equal(new byte[] { 1, 2, 3 }, update.Audio.ToArray());
+        Assert.Equal(new byte[] { 1, 2, 3, 4 }, update.Audio.ToByteArray());
     }
 
     [Theory]

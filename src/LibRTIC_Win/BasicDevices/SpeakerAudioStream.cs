@@ -1,97 +1,112 @@
-﻿using AudioFormatLib;
+using AudioFormatLib;
 using AudioFormatLib.Buffers;
+using AudioFormatLib.IO;
 using NAudio.Wave;
 
 namespace LibRTIC_Win.BasicDevices;
 
-public class SpeakerAudioStream : AudioStreamBuffer
+public class SpeakerAudioStream
+    : AudioStreamBuffer
 {
     public const int BUFFER_SECONDS = 60 * 5;
 
-    private class WaveBufferProvider : IWaveProvider, IDisposable
+    internal sealed class WaveBufferProvider : IWaveProvider, IDisposable
     {
-        private readonly WaveFormat waveFormat;
+        private readonly ASampleFormat _format;
+        private readonly WaveFormat _waveFormat;
+        private IAudioBufferOutput? _source;
+        private long _consumedSampleCount;
 
-        private Stream? source;
+        WaveFormat IWaveProvider.WaveFormat => _waveFormat;
 
-        WaveFormat IWaveProvider.WaveFormat => waveFormat;
+        internal long ConsumedSampleCount
+            => _consumedSampleCount;
 
-        public WaveBufferProvider(Stream source, WaveFormat waveFormat)
+        public WaveBufferProvider(
+            IAudioBufferOutput source,
+            ASampleFormat format,
+            WaveFormat waveFormat)
         {
-            this.source = source;
-            this.waveFormat = waveFormat;
+            _source = source;
+            _format = format;
+            _waveFormat = waveFormat;
         }
 
         public int Read(byte[] buffer, int offset, int count)
         {
-            if (source is not null)
+            IAudioBufferOutput? source = Volatile.Read(ref _source);
+            if (source is null)
             {
-                int bytesRead = source.Read(buffer, offset, count);
-                if (bytesRead < count)
-                {
-                    Array.Fill<byte>(buffer, 0, bytesRead, count - bytesRead);
-                }
-                return count;
+                return 0;
             }
 
-            // Disposed
-            return 0;
+            int alignedCount = count - (count % _format.BytesPerSample);
+            int bytesRead = source.Read(buffer, offset, alignedCount);
+            Array.Clear(buffer, offset + bytesRead, count - bytesRead);
+            int samplesRead = bytesRead / _format.BytesPerSample;
+            _consumedSampleCount += samplesRead;
+            return count;
         }
 
         public void Dispose()
         {
-            source = null;
+            Interlocked.Exchange(ref _source, null);
         }
     }
 
-    private WaveBufferProvider? provider;
+    private WaveBufferProvider? _provider;
+    private readonly WasapiOut _waveOut;
+    private readonly WaveFormat _waveFormat;
 
-    private WasapiOut waveOut;
+    internal long ConsumedSampleCount
+        => _provider?.ConsumedSampleCount ?? 0;
 
-    private readonly WaveFormat waveFormat;
+    internal int BufferedSampleCount => StoredSampleCount;
 
     public float Volume
     {
-        get { return waveOut.Volume; }
-        set { waveOut.Volume = value; }
+        get { return _waveOut.Volume; }
+        set { _waveOut.Volume = value; }
     }
 
-    public SpeakerAudioStream(ABufferParams bp, CancellationToken speakerToken)
+    public SpeakerAudioStream(
+        ABufferParams bp,
+        CancellationToken speakerToken)
         : base(bp, speakerToken)
     {
-        waveFormat = new
-        (
-            rate: bp.Format.SampleRate,
-            bits: bp.Format.SampleValueFormat.Bits(),
-            channels: bp.Format.ChannelLayout.Count
-        );
-        provider = new WaveBufferProvider(Output.Stream, waveFormat);
-        waveOut = new WasapiOut();
-        waveOut.Init(provider);
-        waveOut.Play();
+        _waveFormat = NAudioS16Format.CreateWaveFormat(
+            bp.Format,
+            nameof(bp));
+        _provider = new WaveBufferProvider(
+            Output.Buffer,
+            Format,
+            _waveFormat);
+        _waveOut = new WasapiOut();
+        _waveOut.Init(_provider);
+        _waveOut.Play();
     }
 
     public SpeakerAudioStream(ABufferParams bp)
         : this(bp, CancellationToken.None)
-    { }
+    {
+    }
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing) 
+        if (disposing)
         {
             CloseBuffer();
-            waveOut.Dispose();
+            _waveOut.Dispose();
         }
 
-        // Release unmanaged resources.
         base.Dispose(disposing);
     }
 
     public override void CloseBuffer()
     {
-        waveOut.Stop();
-        provider?.Dispose();
-        provider = null;
+        _waveOut.Stop();
+        _provider?.Dispose();
+        _provider = null;
         base.CloseBuffer();
     }
 }

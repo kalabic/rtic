@@ -1,5 +1,7 @@
 using System.ClientModel.Primitives;
 using System.Text.Json;
+using AudioFormatLib;
+using LibRTIC.Realtime;
 using OpenAI.Realtime;
 
 namespace LibRTIC.Conversation.OpenAI;
@@ -215,7 +217,7 @@ internal sealed class OpenAISessionEventTranslator
                 value.ItemId,
                 value.OutputIndex,
                 value.ContentIndex,
-                value.Delta.ToMemory()),
+                RealtimeAudioContract.CreatePacket(value.Delta.ToMemory().Span)),
             RealtimeServerUpdateResponseOutputAudioDone value => new RTICOutputAudioCompleted(
                 value.ResponseId,
                 value.ItemId,
@@ -316,11 +318,11 @@ internal sealed class OpenAISessionEventTranslator
         => part switch
         {
             RealtimeInputAudioMessageContentPart value => new RTICAudioContentPart(
-                TranslateOptionalBinary(value.AudioBytes),
+                TranslateOptionalAudio(value.AudioBytes),
                 value.Transcript,
                 true),
             RealtimeOutputAudioMessageContentPart value => new RTICAudioContentPart(
-                TranslateOptionalBinary(value.AudioBytes),
+                TranslateOptionalAudio(value.AudioBytes),
                 value.Transcript,
                 false),
             RealtimeInputTextMessageContentPart value => new RTICTextContentPart(
@@ -340,7 +342,7 @@ internal sealed class OpenAISessionEventTranslator
         if (part.Kind == RealtimeResponseContentPartKind.Audio)
         {
             return new RTICAudioContentPart(
-                TranslateOptionalBinary(part.Audio),
+                TranslateOptionalAudio(part.Audio),
                 part.Transcript,
                 false);
         }
@@ -488,6 +490,19 @@ internal sealed class OpenAISessionEventTranslator
         return bytes.Length == 0
             ? (ReadOnlyMemory<byte>?)null
             : new ReadOnlyMemory<byte>(bytes);
+    }
+
+    private static AudioPacket? TranslateOptionalAudio(BinaryData? value)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        ReadOnlyMemory<byte> bytes = value.ToMemory();
+        return bytes.Length == 0
+            ? null
+            : RealtimeAudioContract.CreatePacket(bytes.Span);
     }
 
     private static string? TranslateMetadataValue(BinaryData? value)
