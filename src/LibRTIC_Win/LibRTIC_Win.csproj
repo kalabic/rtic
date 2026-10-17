@@ -14,8 +14,8 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'" />
 
   <ItemGroup>
-    <PackageReference Include="DotBase" Version="1.13.0" />
-    <PackageReference Include="NAudio" Version="2.3.0" />
+    <PackageReference Include="DotBase" Version="1.14.0" />
+    <PackageReference Include="NAudio" Version="2.4.0" />
   </ItemGroup>
 
 	<ItemGroup>

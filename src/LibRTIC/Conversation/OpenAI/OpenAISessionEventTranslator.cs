@@ -101,13 +101,13 @@ internal sealed class OpenAISessionEventTranslator
                     value.ContentIndex,
                     value.Transcript,
                     TranslateTranscriptionUsage(value.Usage),
-                    TranslateLogProbabilities(value.Logprobs)),
+                    TranslateLogProbabilities(value.TranscriptionTokenLogProbabilities)),
             RealtimeServerUpdateConversationItemInputAudioTranscriptionDelta value =>
                 new RTICInputTranscriptionDelta(
                     value.ItemId,
                     value.ContentIndex,
                     value.Delta,
-                    TranslateLogProbabilities(value.Logprobs)),
+                    TranslateLogProbabilities(value.TranscriptionTokenLogProbabilities)),
             RealtimeServerUpdateConversationItemInputAudioTranscriptionFailed value =>
                 new RTICInputTranscriptionFailed(
                     value.ItemId,
@@ -414,7 +414,7 @@ internal sealed class OpenAISessionEventTranslator
             value.TimeUntilReset));
 
     private static IEnumerable<RTICLogProbability> TranslateLogProbabilities(
-        IEnumerable<RealtimeLogProbabilityDetails> values)
+        IEnumerable<RealtimeTokenLogProbabilityDetails> values)
         => values.Select(static value => new RTICLogProbability(
             value.Token,
             value.LogProbability,
